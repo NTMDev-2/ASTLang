@@ -17,7 +17,7 @@ Created by NTMDev (2025)
 
 Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math
 
-ASTLang Version 26, Final Release 4 [BETA]
+ASTLang Version 27, Pre-Alpha Release 1 [PRE-DEV]
 
 Currently Known Bugs:
 - None
@@ -28,8 +28,8 @@ Adding:
 - superclass inheritance (coming ASTLang 27)
 - File I/O operations (coming ASTLang 27)
 
-Added: ListContains(), StringContains(), StringReplace(), TypeOf(), IsType(), RandomChoice()
-Updated: Fixed DictItems :[state] "add + remove" evaluation
+Added: MathConstants(), Floor(), Ceil(), Sqrt(), Log(), Exp(), Sin(), Cos(), Tan(), Factorial, Gcd(), Lcm(), Mod(), MathConstants()
+Updated: None
 ----------------------------------------------------------------------------------------------------------------
 """
 print(info)
@@ -739,6 +739,24 @@ class Cos(NodeParent):
 class Tan(NodeParent):
     def __init__(self, Value):
         self.Value = Value
+class Factorial(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Gcd(NodeParent):
+    def __init__(self, A, B):
+        self.A = A
+        self.B = B
+class Lcm(NodeParent):
+    def __init__(self, A, B):
+        self.A = A
+        self.B = B
+class Mod(NodeParent):
+    def __init__(self, Value, Divisor):
+        self.Value = Value
+        self.Divisor = Divisor
+class MathConstants(NodeParent):
+    def __init__(self, Constant):
+        self.Constant = Constant
 
 class ListAssignment(ValueParent):
     def __init__(self, *LstElements):
@@ -1247,6 +1265,19 @@ class Evaluate():
         elif isinstance(node, Iterable):
             i = self.evaluate(node.Iter, context)
             return iter(i)
+        elif isinstance(node, Factorial):
+            v = self.evaluate(node.Value, context)
+            if not isinstance(v, int) or v < 0:
+                raise ValueError("Factorial requires a non-negative integer")
+            return math.factorial(v)
+        elif isinstance(node, Gcd):
+            a = self.evaluate(node.A, context)
+            b = self.evaluate(node.B, context)
+            return math.gcd(a, b)
+        elif isinstance(node, Lcm):
+            a = self.evaluate(node.A, context)
+            b = self.evaluate(node.B, context)
+            return math.lcm(a, b)
         elif isinstance(node, Loop):
             if node.LoopType == 'for':
                 iterable = self.evaluate(node.Iterable, context)
@@ -1881,6 +1912,22 @@ class Evaluate():
         elif isinstance(node, Tan):
             v = self.evaluate(node.Value, context)
             return math.tan(v)
+        elif isinstance(node, Mod):
+            value = self.evaluate(node.Value, context)
+            divisor = self.evaluate(node.Divisor, context)
+            return math.fmod(value, divisor)
+        elif isinstance(node, MathConstants):
+            const = self.evaluate(node.Constant, context)
+            if const.lower() == 'pi':
+                return math.pi
+            elif const.lower() == 'e':
+                return math.e
+            elif const.lower() == 'tau':
+                return math.tau
+            elif const.lower() == 'inf':
+                return math.inf
+            else:
+                raise ValueError(f"Unknown math constant: {const}")
         else:
             global runnable
             runnable = False
