@@ -1,4 +1,4 @@
-import io, sys, time, traceback, inspect
+import io, sys, time, traceback, inspect, math
 from tkinter import messagebox
 import tkinter as tk
 from random import randint
@@ -15,9 +15,9 @@ Supports IDE usuage and file saving with .astlang
 Designed with GitHub Copilot
 Created by NTMDev (2025)
 
-Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect
+Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math
 
-ASTLang Version 26, Pre-Alpha Release 2 [BETA]
+ASTLang Version 26, Final Release 4 [BETA]
 
 Currently Known Bugs:
 - None
@@ -713,6 +713,32 @@ class Round(ValueParent):
     def __init__(self, Flt, DecPoints):
         self.Flt = Flt
         self.DecPoints = DecPoints
+
+class Floor(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Ceil(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Sqrt(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Log(NodeParent):
+    def __init__(self, Value, Base=ObjNONE()):
+        self.Value = Value
+        self.Base = Base
+class Exp(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Sin(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Cos(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Tan(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
 
 class ListAssignment(ValueParent):
     def __init__(self, *LstElements):
@@ -1827,6 +1853,34 @@ class Evaluate():
             val = self.evaluate(node.Value, context)
             obj[node.Attr] = val
             return val
+        elif isinstance(node, Floor):
+            v = self.evaluate(node.Value, context)
+            return math.floor(v)
+        elif isinstance(node, Ceil):
+            v = self.evaluate(node.Value, context)
+            return math.ceil(v)
+        elif isinstance(node, Sqrt):
+            v = self.evaluate(node.Value, context)
+            return math.sqrt(v)
+        elif isinstance(node, Log):
+            v = self.evaluate(node.Value, context)
+            if isinstance(node.Base, ObjNONE):
+                return math.log(v)
+            else:
+                base = self.evaluate(node.Base, context)
+                return math.log(v, base)
+        elif isinstance(node, Exp):
+            v = self.evaluate(node.Value, context)
+            return math.exp(v)
+        elif isinstance(node, Sin):
+            v = self.evaluate(node.Value, context)
+            return math.sin(v)
+        elif isinstance(node, Cos):
+            v = self.evaluate(node.Value, context)
+            return math.cos(v)
+        elif isinstance(node, Tan):
+            v = self.evaluate(node.Value, context)
+            return math.tan(v)
         else:
             global runnable
             runnable = False
