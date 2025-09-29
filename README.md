@@ -15,3 +15,5 @@ NOTE: Problems with a final comment by NTMDev (me) shows that the problem was fi
 Bonus: ASTLang comes with a simple vector creator and simulator
 
 You can check the branch `classes` for a backup version of the project.
+
+All currently open issues will be fixed in one update. The updates notes (here in the README) will include the fix. You can also just check the `Issues` page for an update on the bug. 
