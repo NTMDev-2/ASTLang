@@ -3,13 +3,15 @@ A custom coding language that is fully functional, and based off of AST (Abstrac
 
 Supports function definition, variable assignments, tuples, dictionaries and lists.
 
-Upcoming Releases: ASTLang 28, Release 2 [FINAL-DEVELOPMENT]
-Release Date: October 1st, 2025 (in 2 days from th)
+Upcoming Major Releases: ASTLang 28, Release 1 [FINAL-DEVELOPMENT]
+Release Date: October 2nd, 2025
 
-Current version: ASTLang 26, Final Release 4 [BETA]
-Previous version was ASTLang 26, Pre-Alpha Release 2 [BETA]
+More class functions are coming!
 
-Unsupported versions: ASTLang 25 and below (ASTLang 26 Pre-Release is also now unsupported as of September 28th)
+Current version: ASTLang 27, Pre-Alpha Release 1 [PRE-DEV]
+Previous version was ASTLang 26, Final Release 4 [BETA]
+
+Unsupported versions: ASTLang 26, Pre-Alpha Release 3 [PRE-DEV] and below (ASTLang 26 Pre-Release is also now unsupported as of September 28th)
 
 NOTE: Problems with a final comment by NTMDev (me) shows that the problem was fixed. I keep problems open for easier reference.
 Bonus: ASTLang comes with a simple vector creator and simulator
