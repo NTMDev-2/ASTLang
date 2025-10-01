@@ -17,7 +17,7 @@ Created by NTMDev (2025)
 
 Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math
 
-ASTLang Version 27, Pre-Alpha Release 1 [PRE-DEV]
+ASTLang Version 28 [PRE-DEV]
 
 Currently Known Bugs:
 - None
@@ -28,7 +28,7 @@ Adding:
 - superclass inheritance (coming ASTLang 27)
 - File I/O operations (coming ASTLang 27)
 
-Added: MathConstants(), Floor(), Ceil(), Sqrt(), Log(), Exp(), Sin(), Cos(), Tan(), Factorial, Gcd(), Lcm(), Mod(), MathConstants()
+Added: Clamp(), DeepCopy(), HashValue(), Ord(), Chr(), BaseConvert()
 Updated: None
 ----------------------------------------------------------------------------------------------------------------
 """
@@ -934,6 +934,23 @@ class StringContains(NodeParent):
         self.Text = Text
         self.Substring = Substring
 
+class Clamp(NodeParent):
+    def __init__(self, Value, Min, Max):
+        self.Value = Value
+        self.Min = Min
+        self.Max = Max
+class DeepCopy(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class HashValue(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class BaseConvert(NodeParent):
+    def __init__(self, Number, FromBase, ToBase):
+        self.Number = Number
+        self.FromBase = FromBase
+        self.ToBase = ToBase
+
 class DictionaryAssign(ValueParent):
     def __init__(self, Pairs):
         self.Pairs = Pairs
@@ -1056,6 +1073,13 @@ class MethodCall(FunctionParent):
         self.Obj = Obj
         self.MethodName = MethodName
         self.Args = Args
+
+class Ord(NodeParent):
+    def __init__(self, Str):
+        self.Str = Str
+class Chr(NodeParent):
+    def __init__(self, Str):
+        self.Str = Str
 
 primitive = (str, int, float, list, bool, dict, tuple)
 class Evaluate():
@@ -1928,6 +1952,63 @@ class Evaluate():
                 return math.inf
             else:
                 raise ValueError(f"Unknown math constant: {const}")
+        elif isinstance(node, Clamp):
+            value = self.evaluate(node.Value, context)
+            min_val = self.evaluate(node.Min, context)
+            max_val = self.evaluate(node.Max, context)
+            if not isinstance(value, (int, float)) or not isinstance(min_val, (int, float)) or not isinstance(max_val, (int, float)):
+                raise TypeError("Clamp requires numeric values")
+            return max(min_val, min(value, max_val))   
+        elif isinstance(node, DeepCopy):
+            import copy
+            value = self.evaluate(node.Value, context)
+            return copy.deepcopy(value)         
+        elif isinstance(node, HashValue):
+            value = self.evaluate(node.Value, context)
+            try:
+                return hash(value)
+            except TypeError:
+                return hash(str(value))                
+        elif isinstance(node, BaseConvert):
+            number = self.evaluate(node.Number, context)
+            from_base = self.evaluate(node.FromBase, context)
+            to_base = self.evaluate(node.ToBase, context)
+            
+            if not isinstance(from_base, int) or not isinstance(to_base, int):
+                raise TypeError("BaseConvert bases must be integers")
+            if from_base < 2 or from_base > 36 or to_base < 2 or to_base > 36:
+                raise ValueError("BaseConvert bases must be between 2 and 36")
+
+            if isinstance(number, str):
+                try:
+                    decimal = int(number, from_base)
+                except ValueError:
+                    raise ValueError(f"Invalid number '{number}' for base {from_base}")
+            else:
+                decimal = int(number)
+            if to_base == 10:
+                return decimal
+            elif to_base == 2:
+                return bin(decimal)[2:]
+            elif to_base == 8:
+                return oct(decimal)[2:]  
+            elif to_base == 16:
+                return hex(decimal)[2:]
+            else:
+                if decimal == 0:
+                    return "0"
+                digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                result = ""
+                negative = decimal < 0
+                decimal = abs(decimal)
+                while decimal > 0:
+                    result = digits[decimal % to_base] + result
+                    decimal //= to_base
+                return ("-" if negative else "") + result
+        elif isinstance(node, Ord):
+            return ord(self.evaluate(node.Str, context))
+        elif isinstance(node, Chr):
+            return chr(self.evaluate(node.Str, context))
         else:
             global runnable
             runnable = False
