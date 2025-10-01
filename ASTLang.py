@@ -1,4 +1,4 @@
-import io, sys, time, traceback, inspect
+import io, sys, time, traceback, inspect, math
 from tkinter import messagebox
 import tkinter as tk
 from random import randint
@@ -15,9 +15,9 @@ Supports IDE usuage and file saving with .astlang
 Designed with GitHub Copilot
 Created by NTMDev (2025)
 
-Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect
+Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math
 
-ASTLang Version 26, Pre-Alpha Release 2 [BETA]
+ASTLang Version 27, Pre-Alpha Release 1 [PRE-DEV]
 
 Currently Known Bugs:
 - None
@@ -28,8 +28,8 @@ Adding:
 - superclass inheritance (coming ASTLang 27)
 - File I/O operations (coming ASTLang 27)
 
-Added: ListContains(), StringContains(), StringReplace(), TypeOf(), IsType(), RandomChoice()
-Updated: Fixed DictItems :[state] "add + remove" evaluation
+Added: MathConstants(), Floor(), Ceil(), Sqrt(), Log(), Exp(), Sin(), Cos(), Tan(), Factorial, Gcd(), Lcm(), Mod(), MathConstants()
+Updated: None
 ----------------------------------------------------------------------------------------------------------------
 """
 print(info)
@@ -714,6 +714,50 @@ class Round(ValueParent):
         self.Flt = Flt
         self.DecPoints = DecPoints
 
+class Floor(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Ceil(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Sqrt(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Log(NodeParent):
+    def __init__(self, Value, Base=ObjNONE()):
+        self.Value = Value
+        self.Base = Base
+class Exp(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Sin(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Cos(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Tan(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Factorial(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Gcd(NodeParent):
+    def __init__(self, A, B):
+        self.A = A
+        self.B = B
+class Lcm(NodeParent):
+    def __init__(self, A, B):
+        self.A = A
+        self.B = B
+class Mod(NodeParent):
+    def __init__(self, Value, Divisor):
+        self.Value = Value
+        self.Divisor = Divisor
+class MathConstants(NodeParent):
+    def __init__(self, Constant):
+        self.Constant = Constant
+
 class ListAssignment(ValueParent):
     def __init__(self, *LstElements):
         self.Lst = LstElements
@@ -1221,6 +1265,19 @@ class Evaluate():
         elif isinstance(node, Iterable):
             i = self.evaluate(node.Iter, context)
             return iter(i)
+        elif isinstance(node, Factorial):
+            v = self.evaluate(node.Value, context)
+            if not isinstance(v, int) or v < 0:
+                raise ValueError("Factorial requires a non-negative integer")
+            return math.factorial(v)
+        elif isinstance(node, Gcd):
+            a = self.evaluate(node.A, context)
+            b = self.evaluate(node.B, context)
+            return math.gcd(a, b)
+        elif isinstance(node, Lcm):
+            a = self.evaluate(node.A, context)
+            b = self.evaluate(node.B, context)
+            return math.lcm(a, b)
         elif isinstance(node, Loop):
             if node.LoopType == 'for':
                 iterable = self.evaluate(node.Iterable, context)
@@ -1827,6 +1884,50 @@ class Evaluate():
             val = self.evaluate(node.Value, context)
             obj[node.Attr] = val
             return val
+        elif isinstance(node, Floor):
+            v = self.evaluate(node.Value, context)
+            return math.floor(v)
+        elif isinstance(node, Ceil):
+            v = self.evaluate(node.Value, context)
+            return math.ceil(v)
+        elif isinstance(node, Sqrt):
+            v = self.evaluate(node.Value, context)
+            return math.sqrt(v)
+        elif isinstance(node, Log):
+            v = self.evaluate(node.Value, context)
+            if isinstance(node.Base, ObjNONE):
+                return math.log(v)
+            else:
+                base = self.evaluate(node.Base, context)
+                return math.log(v, base)
+        elif isinstance(node, Exp):
+            v = self.evaluate(node.Value, context)
+            return math.exp(v)
+        elif isinstance(node, Sin):
+            v = self.evaluate(node.Value, context)
+            return math.sin(v)
+        elif isinstance(node, Cos):
+            v = self.evaluate(node.Value, context)
+            return math.cos(v)
+        elif isinstance(node, Tan):
+            v = self.evaluate(node.Value, context)
+            return math.tan(v)
+        elif isinstance(node, Mod):
+            value = self.evaluate(node.Value, context)
+            divisor = self.evaluate(node.Divisor, context)
+            return math.fmod(value, divisor)
+        elif isinstance(node, MathConstants):
+            const = self.evaluate(node.Constant, context)
+            if const.lower() == 'pi':
+                return math.pi
+            elif const.lower() == 'e':
+                return math.e
+            elif const.lower() == 'tau':
+                return math.tau
+            elif const.lower() == 'inf':
+                return math.inf
+            else:
+                raise ValueError(f"Unknown math constant: {const}")
         else:
             global runnable
             runnable = False
