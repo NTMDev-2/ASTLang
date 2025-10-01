@@ -17,7 +17,7 @@ Created by NTMDev (2025)
 
 Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math
 
-ASTLang Version 28 [PRE-DEV]
+Current Version Stored: ASTLang 28, Release 1 [FINAL-DEVELOPMENT]
 
 Currently Known Bugs:
 - None
@@ -2068,3 +2068,4 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
+
