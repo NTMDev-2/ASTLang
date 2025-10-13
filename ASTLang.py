@@ -1,4 +1,4 @@
-import io, sys, time, traceback, inspect
+import io, sys, time, traceback, inspect, math
 from tkinter import messagebox
 import tkinter as tk
 from random import randint
@@ -15,9 +15,9 @@ Supports IDE usuage and file saving with .astlang
 Designed with GitHub Copilot
 Created by NTMDev (2025)
 
-Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect
+Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math
 
-ASTLang Version 26, Pre-Alpha Release 2 [BETA]
+Current Version Stored: ASTLang 28, Release 1 [FINAL-DEVELOPMENT]
 
 Currently Known Bugs:
 - None
@@ -28,8 +28,8 @@ Adding:
 - superclass inheritance (coming ASTLang 27)
 - File I/O operations (coming ASTLang 27)
 
-Added: ListContains(), StringContains(), StringReplace(), TypeOf(), IsType(), RandomChoice()
-Updated: Fixed DictItems :[state] "add + remove" evaluation
+Added: Clamp(), DeepCopy(), HashValue(), Ord(), Chr(), BaseConvert()
+Updated: Fixed signature box hiding behavior (when window unfocused box is hidden)
 ----------------------------------------------------------------------------------------------------------------
 """
 print(info)
@@ -388,6 +388,17 @@ def txteditor_ui(initial=''):
                         background="#333333", foreground="#ffffff", padx=5, pady=2)
         label.pack()
         signature_box.geometry(f"+{x_root}+{y_root+20}")
+        def auto_hide():
+            try:
+                if signature_box and signature_box.winfo_exists():
+                    signature_box.after(5000, hide_signature) 
+            except tk.TclError:
+                pass
+        def on_click(event=None):
+            hide_signature()
+        
+        code_text.bind("<Button-1>", on_click, add="+")
+        root.bind("<Button-1>", on_click, add="+")
 
     def handle_autocomplete(event=None):
         word = get_current_word()
@@ -469,19 +480,21 @@ def txteditor_ui(initial=''):
     code_text.pack(expand=True, fill='both')
     code_text.insert(tk.END, initial)
     scrollbar.config(command=on_scroll)
-
     def safe_update_ui():
         try:
             if code_text.winfo_exists():
                 update_line_numbers()
                 highlight()
-                handle_autocomplete()
-                handle_signature()
+                if code_text.focus_get() == code_text:
+                    handle_autocomplete()
+                    handle_signature()
+                else:
+                    hide_autocomplete()
+                    hide_signature()
         except tk.TclError:
             pass
         except Exception as e:
             print(f"UI update error: {e}")
-
     for ev in ("<KeyRelease>", "<Return>", "<BackSpace>", ",", "(", ")"):
         code_text.bind(ev, lambda e: safe_update_ui())
     def insert_two_spaces(event):
@@ -525,7 +538,6 @@ def txteditor_ui(initial=''):
                 return ast.unparse(node)
             except:
                 return str(node)
-
     def parse_astlang_to_dict(code_text):
         try:
             tree = ast.parse(code_text)
@@ -537,8 +549,6 @@ def txteditor_ui(initial=''):
         for node in tree.body:
             result["body"].append(node_to_dict(node))
         return result
-
-
     def save_ast_text(filename, text):
         if not filename.endswith(".astlang"):
             filename += ".astlang"
@@ -552,12 +562,26 @@ def txteditor_ui(initial=''):
 
         with open(filename, "wb") as f:
             pickle.dump(obj, f)
-
-
     def load_ast_text(filename):
         with open(filename, "rb") as f:
             return pickle.load(f)
 
+        # Add these focus event handlers after the show_signature function (around line 320):
+    
+    def on_focus_out(event=None):
+        """Hide signature box when IDE loses focus"""
+        hide_signature()
+        hide_autocomplete()
+    def on_focus_in(event=None):
+        """Optionally handle focus in events"""
+        pass
+    root.bind("<FocusOut>", on_focus_out)
+    code_text.bind("<FocusOut>", on_focus_out)
+    code_text.bind("<FocusIn>", on_focus_in)
+    root.bind("<Unmap>", on_focus_out) 
+    root.bind("<Map>", on_focus_in) 
+    root.bind("<Deactivate>", on_focus_out)
+    root.bind("<Activate>", on_focus_in)
 
     from tkinter import filedialog
 
@@ -713,6 +737,50 @@ class Round(ValueParent):
     def __init__(self, Flt, DecPoints):
         self.Flt = Flt
         self.DecPoints = DecPoints
+
+class Floor(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Ceil(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Sqrt(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Log(NodeParent):
+    def __init__(self, Value, Base=ObjNONE()):
+        self.Value = Value
+        self.Base = Base
+class Exp(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Sin(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Cos(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Tan(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Factorial(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class Gcd(NodeParent):
+    def __init__(self, A, B):
+        self.A = A
+        self.B = B
+class Lcm(NodeParent):
+    def __init__(self, A, B):
+        self.A = A
+        self.B = B
+class Mod(NodeParent):
+    def __init__(self, Value, Divisor):
+        self.Value = Value
+        self.Divisor = Divisor
+class MathConstants(NodeParent):
+    def __init__(self, Constant):
+        self.Constant = Constant
 
 class ListAssignment(ValueParent):
     def __init__(self, *LstElements):
@@ -890,6 +958,23 @@ class StringContains(NodeParent):
         self.Text = Text
         self.Substring = Substring
 
+class Clamp(NodeParent):
+    def __init__(self, Value, Min, Max):
+        self.Value = Value
+        self.Min = Min
+        self.Max = Max
+class DeepCopy(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class HashValue(NodeParent):
+    def __init__(self, Value):
+        self.Value = Value
+class BaseConvert(NodeParent):
+    def __init__(self, Number, FromBase, ToBase):
+        self.Number = Number
+        self.FromBase = FromBase
+        self.ToBase = ToBase
+
 class DictionaryAssign(ValueParent):
     def __init__(self, Pairs):
         self.Pairs = Pairs
@@ -1012,6 +1097,13 @@ class MethodCall(FunctionParent):
         self.Obj = Obj
         self.MethodName = MethodName
         self.Args = Args
+
+class Ord(NodeParent):
+    def __init__(self, Str):
+        self.Str = Str
+class Chr(NodeParent):
+    def __init__(self, Str):
+        self.Str = Str
 
 primitive = (str, int, float, list, bool, dict, tuple)
 class Evaluate():
@@ -1221,6 +1313,19 @@ class Evaluate():
         elif isinstance(node, Iterable):
             i = self.evaluate(node.Iter, context)
             return iter(i)
+        elif isinstance(node, Factorial):
+            v = self.evaluate(node.Value, context)
+            if not isinstance(v, int) or v < 0:
+                raise ValueError("Factorial requires a non-negative integer")
+            return math.factorial(v)
+        elif isinstance(node, Gcd):
+            a = self.evaluate(node.A, context)
+            b = self.evaluate(node.B, context)
+            return math.gcd(a, b)
+        elif isinstance(node, Lcm):
+            a = self.evaluate(node.A, context)
+            b = self.evaluate(node.B, context)
+            return math.lcm(a, b)
         elif isinstance(node, Loop):
             if node.LoopType == 'for':
                 iterable = self.evaluate(node.Iterable, context)
@@ -1827,6 +1932,107 @@ class Evaluate():
             val = self.evaluate(node.Value, context)
             obj[node.Attr] = val
             return val
+        elif isinstance(node, Floor):
+            v = self.evaluate(node.Value, context)
+            return math.floor(v)
+        elif isinstance(node, Ceil):
+            v = self.evaluate(node.Value, context)
+            return math.ceil(v)
+        elif isinstance(node, Sqrt):
+            v = self.evaluate(node.Value, context)
+            return math.sqrt(v)
+        elif isinstance(node, Log):
+            v = self.evaluate(node.Value, context)
+            if isinstance(node.Base, ObjNONE):
+                return math.log(v)
+            else:
+                base = self.evaluate(node.Base, context)
+                return math.log(v, base)
+        elif isinstance(node, Exp):
+            v = self.evaluate(node.Value, context)
+            return math.exp(v)
+        elif isinstance(node, Sin):
+            v = self.evaluate(node.Value, context)
+            return math.sin(v)
+        elif isinstance(node, Cos):
+            v = self.evaluate(node.Value, context)
+            return math.cos(v)
+        elif isinstance(node, Tan):
+            v = self.evaluate(node.Value, context)
+            return math.tan(v)
+        elif isinstance(node, Mod):
+            value = self.evaluate(node.Value, context)
+            divisor = self.evaluate(node.Divisor, context)
+            return math.fmod(value, divisor)
+        elif isinstance(node, MathConstants):
+            const = self.evaluate(node.Constant, context)
+            if const.lower() == 'pi':
+                return math.pi
+            elif const.lower() == 'e':
+                return math.e
+            elif const.lower() == 'tau':
+                return math.tau
+            elif const.lower() == 'inf':
+                return math.inf
+            else:
+                raise ValueError(f"Unknown math constant: {const}")
+        elif isinstance(node, Clamp):
+            value = self.evaluate(node.Value, context)
+            min_val = self.evaluate(node.Min, context)
+            max_val = self.evaluate(node.Max, context)
+            if not isinstance(value, (int, float)) or not isinstance(min_val, (int, float)) or not isinstance(max_val, (int, float)):
+                raise TypeError("Clamp requires numeric values")
+            return max(min_val, min(value, max_val))   
+        elif isinstance(node, DeepCopy):
+            import copy
+            value = self.evaluate(node.Value, context)
+            return copy.deepcopy(value)         
+        elif isinstance(node, HashValue):
+            value = self.evaluate(node.Value, context)
+            try:
+                return hash(value)
+            except TypeError:
+                return hash(str(value))                
+        elif isinstance(node, BaseConvert):
+            number = self.evaluate(node.Number, context)
+            from_base = self.evaluate(node.FromBase, context)
+            to_base = self.evaluate(node.ToBase, context)
+            
+            if not isinstance(from_base, int) or not isinstance(to_base, int):
+                raise TypeError("BaseConvert bases must be integers")
+            if from_base < 2 or from_base > 36 or to_base < 2 or to_base > 36:
+                raise ValueError("BaseConvert bases must be between 2 and 36")
+
+            if isinstance(number, str):
+                try:
+                    decimal = int(number, from_base)
+                except ValueError:
+                    raise ValueError(f"Invalid number '{number}' for base {from_base}")
+            else:
+                decimal = int(number)
+            if to_base == 10:
+                return decimal
+            elif to_base == 2:
+                return bin(decimal)[2:]
+            elif to_base == 8:
+                return oct(decimal)[2:]  
+            elif to_base == 16:
+                return hex(decimal)[2:]
+            else:
+                if decimal == 0:
+                    return "0"
+                digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                result = ""
+                negative = decimal < 0
+                decimal = abs(decimal)
+                while decimal > 0:
+                    result = digits[decimal % to_base] + result
+                    decimal //= to_base
+                return ("-" if negative else "") + result
+        elif isinstance(node, Ord):
+            return ord(self.evaluate(node.Str, context))
+        elif isinstance(node, Chr):
+            return chr(self.evaluate(node.Str, context))
         else:
             global runnable
             runnable = False
