@@ -4,7 +4,6 @@ A custom coding language that is fully functional, and based off of AST (Abstrac
 Supports function definition, variable assignments, tuples, dictionaries and lists.
 
 Upcoming Major Releases: ASTLang 28, Pre-Release 3 [BETA]
-Release Date: October 3nd, 2025
 
 New functions coming during the Upcoming Major Release: Super class inheritance. 
 
