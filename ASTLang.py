@@ -22,7 +22,7 @@ Created by NTMDev (2025)
 
 Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math
 
-Current Version Stored: ASTLang 31, Pre-Release 6 [ALPHA]
+Current Version Stored: ASTLang 31, Release 2 [PRE-DEVELOPMENT]
 
 Currently Known Bugs:
 - File I/O commands do not have kernel level permissions to update files, through ":[state] FilePath", "no update"
@@ -2496,3 +2496,4 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
+
