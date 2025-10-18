@@ -1,35 +1,41 @@
-import io, sys, time, traceback, inspect, math
-from tkinter import messagebox
-import tkinter as tk
-from random import randint
-context: dict[str, object] = dict()
+try:
+    import io, sys, time, traceback, inspect, math
+    from tkinter import messagebox
+    import tkinter as tk
+    from random import randint
+except ModuleNotFoundError:
+    print('System exception ; ModuleNotFoundError ; Do you have Python installed correctly?')
+context: dict[str, object] = dict() # Initialize main register
 
 info = """
 DEFAULT MESSAGE FROM IDE:
 'NTMDev ...'
-Note from NTMDev: ASTLang 25 is now unsupported
+Note from NTMDev: ASTLang 27 is now unsupported
 ----------------------------------------------------------------------------------------------------------------
 ASTLang for PC, Local based (IDE)
 Supports IDE usuage and file saving with .astlang
+
+Python 3.12 Build 2025, Version 3.12.0 "NEWEST"
 
 Designed with GitHub Copilot
 Created by NTMDev (2025)
 
 Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math
 
-Current Version Stored: ASTLang 28, Release 1 [FINAL-DEVELOPMENT]
+Current Version Stored: ASTLang 31, Pre-Release 6 [ALPHA]
 
 Currently Known Bugs:
-- None
+- File I/O commands do not have kernel level permissions to update files, through ":[state] FilePath", "no update"
 
-Functions (COMING SOON): FileOperation(), FileEdit()
+Functions (COMING SOON): Import()
 
 Adding: 
-- superclass inheritance (coming ASTLang 27)
-- File I/O operations (coming ASTLang 27)
+- superclass inheritance (coming ASTLang 35)
+- custom modules (coming ASTLang 33)
 
-Added: Clamp(), DeepCopy(), HashValue(), Ord(), Chr(), BaseConvert()
-Updated: None
+Added: FileRead(), FileWrite(), FileAppend(), FileDelete(), FileExists(), FileSize(), ListFiles(), Lambda(), MapFunction()
+FilterFunction(), ReduceFunction()
+Updated: Live console output, including errors 
 ----------------------------------------------------------------------------------------------------------------
 """
 print(info)
@@ -388,6 +394,17 @@ def txteditor_ui(initial=''):
                         background="#333333", foreground="#ffffff", padx=5, pady=2)
         label.pack()
         signature_box.geometry(f"+{x_root}+{y_root+20}")
+        def auto_hide():
+            try:
+                if signature_box and signature_box.winfo_exists():
+                    signature_box.after(5000, hide_signature) 
+            except tk.TclError:
+                pass
+        def on_click(event=None):
+            hide_signature()
+        
+        code_text.bind("<Button-1>", on_click, add="+")
+        root.bind("<Button-1>", on_click, add="+")
 
     def handle_autocomplete(event=None):
         word = get_current_word()
@@ -469,19 +486,21 @@ def txteditor_ui(initial=''):
     code_text.pack(expand=True, fill='both')
     code_text.insert(tk.END, initial)
     scrollbar.config(command=on_scroll)
-
     def safe_update_ui():
         try:
             if code_text.winfo_exists():
                 update_line_numbers()
                 highlight()
-                handle_autocomplete()
-                handle_signature()
+                if code_text.focus_get() == code_text:
+                    handle_autocomplete()
+                    handle_signature()
+                else:
+                    hide_autocomplete()
+                    hide_signature()
         except tk.TclError:
             pass
         except Exception as e:
             print(f"UI update error: {e}")
-
     for ev in ("<KeyRelease>", "<Return>", "<BackSpace>", ",", "(", ")"):
         code_text.bind(ev, lambda e: safe_update_ui())
     def insert_two_spaces(event):
@@ -525,7 +544,6 @@ def txteditor_ui(initial=''):
                 return ast.unparse(node)
             except:
                 return str(node)
-
     def parse_astlang_to_dict(code_text):
         try:
             tree = ast.parse(code_text)
@@ -537,8 +555,6 @@ def txteditor_ui(initial=''):
         for node in tree.body:
             result["body"].append(node_to_dict(node))
         return result
-
-
     def save_ast_text(filename, text):
         if not filename.endswith(".astlang"):
             filename += ".astlang"
@@ -552,12 +568,26 @@ def txteditor_ui(initial=''):
 
         with open(filename, "wb") as f:
             pickle.dump(obj, f)
-
-
     def load_ast_text(filename):
         with open(filename, "rb") as f:
             return pickle.load(f)
 
+        # Add these focus event handlers after the show_signature function (around line 320):
+    
+    def on_focus_out(event=None):
+        """Hide signature box when IDE loses focus"""
+        hide_signature()
+        hide_autocomplete()
+    def on_focus_in(event=None):
+        """Optionally handle focus in events"""
+        pass
+    root.bind("<FocusOut>", on_focus_out)
+    code_text.bind("<FocusOut>", on_focus_out)
+    code_text.bind("<FocusIn>", on_focus_in)
+    root.bind("<Unmap>", on_focus_out) 
+    root.bind("<Map>", on_focus_in) 
+    root.bind("<Deactivate>", on_focus_out)
+    root.bind("<Activate>", on_focus_in)
 
     from tkinter import filedialog
 
@@ -757,6 +787,24 @@ class Mod(NodeParent):
 class MathConstants(NodeParent):
     def __init__(self, Constant):
         self.Constant = Constant
+
+class Lambda(NodeParent):
+    def __init__(self, Parameters, Body):
+        self.Parameters = Parameters
+        self.Body = Body
+class MapFunction(FunctionParent):
+    def __init__(self, Function, Iterable):
+        self.Function = Function
+        self.Iterable = Iterable
+class FilterFunction(FunctionParent):
+    def __init__(self, Function, Iterable):
+        self.Function = Function
+        self.Iterable = Iterable     
+class ReduceFunction(FunctionParent):
+    def __init__(self, Function, Iterable, InitialValue=ObjNONE()):
+        self.Function = Function
+        self.Iterable = Iterable
+        self.InitialValue = InitialValue 
 
 class ListAssignment(ValueParent):
     def __init__(self, *LstElements):
@@ -1081,11 +1129,47 @@ class Chr(NodeParent):
     def __init__(self, Str):
         self.Str = Str
 
+class FileRead(FunctionParent):
+    def __init__(self, FilePath, Mode=String('r'), Encoding=String('utf-8')):
+        self.FilePath = FilePath
+        self.Mode = Mode
+        self.Encoding = Encoding
+class FileWrite(FunctionParent):
+    def __init__(self, FilePath, Content, Mode=String('w'), Encoding=String('utf-8')):
+        self.FilePath = FilePath
+        self.Content = Content
+        self.Mode = Mode
+        self.Encoding = Encoding
+class FileAppend(NodeParent):
+    def __init__(self, FilePath, Content, Encoding=String('utf-8')):
+        self.FilePath = FilePath
+        self.Content = Content
+        self.Encoding = Encoding
+class FileExists(NodeParent):
+    def __init__(self, FilePath):
+        self.FilePath = FilePath
+class FileDelete(NodeParent):
+    def __init__(self, FilePath):
+        self.FilePath = FilePath
+class FileSize(ValueParent):
+    def __init__(self, FilePath):
+        self.FilePath = FilePath
+class ListFiles(IntepreterParent):
+    def __init__(self, DirectoryPath, Pattern=String('*')):
+        self.DirectoryPath = DirectoryPath
+        self.Pattern = Pattern
+
 primitive = (str, int, float, list, bool, dict, tuple)
 class Evaluate():
     def evaluate(self, node, context):
         if isinstance(node, Exit):
             code = self.evaluate(node.Code, context)
+            print(f"\n[IDE EXIT WITH CODE {code}]\n")
+            import tkinter as tk
+            for widget in tk._default_root.winfo_children():
+                if isinstance(widget, tk.Toplevel):
+                    widget.destroy()
+            tk._default_root.quit()
             sys.exit(code)
         elif isinstance(node, type):
             print('[ERROR] Did not recieve arguments for function')
@@ -1215,21 +1299,24 @@ class Evaluate():
             if isinstance(node.Function, Print):
                 contents = node.Function.Contents
                 value = self.evaluate(contents, context)
-                  
-                end_val = node.Function.End
-                end_val = self.evaluate(end_val, context) if not isinstance(end_val, primitive) else end_val
+                
+                if isinstance(node.Function.End, PrimitiveWrapper):
+                    end_val = node.Function.End.V
+                else:
+                    end_val = self.evaluate(node.Function.End, context)
+                
                 if isinstance(value, str) and value in context:
                     print(context[value], end=end_val)
                 else:
-                  print(value, end=end_val)
+                    print(value, end=end_val)
                 return None
-            elif isinstance(node.Function, Len):
+        elif isinstance(node, Len):
                 var = self.evaluate(node.Function.Var, context)
                 return len(var)
-            elif isinstance(node.Function, Max):
+        elif isinstance(node, Max):
                 var = list(self.evaluate(node.Function.Var, context))
                 return max(var)
-            elif isinstance(node.Function, Min):
+        elif isinstance(node, Min):
                 var = list(self.evaluate(node.Function.Var, context))
                 return min(var)
         elif isinstance(node, Condition):
@@ -1786,7 +1873,7 @@ class Evaluate():
                 if v == max_count:
                     return k
         elif isinstance(node, PauseExecution):
-            time.sleep(self.evaluate(node.Miliseconds)/1000)
+            time.sleep(self.evaluate(node.Miliseconds)/1000, context)
         elif isinstance(node, Raise):
             import builtins
             err_text = self.evaluate(node.ErrorText, context)
@@ -2009,47 +2096,388 @@ class Evaluate():
             return ord(self.evaluate(node.Str, context))
         elif isinstance(node, Chr):
             return chr(self.evaluate(node.Str, context))
+        elif isinstance(node, FileRead):
+            filepath = self.evaluate(node.FilePath, context)
+            mode = self.evaluate(node.Mode, context)
+            encoding = self.evaluate(node.Encoding, context)
+            
+            if not isinstance(filepath, str):
+                raise TypeError("FileRead FilePath must be a string")
+            if not isinstance(mode, str):
+                raise TypeError("FileRead Mode must be a string")
+            if not isinstance(encoding, str):
+                raise TypeError("FileRead Encoding must be a string")
+                
+            try:
+                with open(filepath, mode, encoding=encoding) as f:
+                    return f.read()
+            except FileNotFoundError:
+                raise FileNotFoundError(f"File '{filepath}' not found")
+            except PermissionError:
+                raise PermissionError(f"Permission denied accessing '{filepath}'")
+            except Exception as e:
+                raise Exception(f"Error reading file '{filepath}': {str(e)}")
+        elif isinstance(node, FileWrite):
+            filepath = self.evaluate(node.FilePath, context)
+            content = self.evaluate(node.Content, context)
+            mode = self.evaluate(node.Mode, context)
+            encoding = self.evaluate(node.Encoding, context)
+            
+            if not isinstance(filepath, str):
+                raise TypeError("FileWrite FilePath must be a string")
+            if not isinstance(mode, str):
+                raise TypeError("FileWrite Mode must be a string")
+            if not isinstance(encoding, str):
+                raise TypeError("FileWrite Encoding must be a string")
+                
+            try:
+                with open(filepath, mode, encoding=encoding) as f:
+                    f.write(str(content))
+                    f.close()
+                return f"Successfully wrote to '{filepath}' with '{content}'"
+            except PermissionError:
+                raise PermissionError(f"Permission denied writing to '{filepath}'")
+            except Exception as e:
+                raise Exception(f"Error writing to file '{filepath}': {str(e)}")                
+        elif isinstance(node, FileAppend):
+            filepath = self.evaluate(node.FilePath, context)
+            content = self.evaluate(node.Content, context)
+            encoding = self.evaluate(node.Encoding, context)
+            
+            if not isinstance(filepath, str):
+                raise TypeError("FileAppend FilePath must be a string")
+            if not isinstance(encoding, str):
+                raise TypeError("FileAppend Encoding must be a string")
+                
+            try:
+                with open(filepath, 'a', encoding=encoding) as f:
+                    f.write(str(content))
+                return f"Successfully appended to '{filepath}'"
+            except PermissionError:
+                raise PermissionError(f"Permission denied appending to '{filepath}'")
+            except Exception as e:
+                raise Exception(f"Error appending to file '{filepath}': {str(e)}")                
+        elif isinstance(node, FileExists):
+            filepath = self.evaluate(node.FilePath, context)
+            if not isinstance(filepath, str):
+                raise TypeError("FileExists FilePath must be a string")
+            import os
+            return os.path.exists(filepath)            
+        elif isinstance(node, FileDelete):
+            filepath = self.evaluate(node.FilePath, context)
+            if not isinstance(filepath, str):
+                raise TypeError("FileDelete FilePath must be a string")
+            try:
+                import os
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                    return f"Successfully deleted '{filepath}'"
+                else:
+                    raise FileNotFoundError(f"File '{filepath}' not found")
+            except PermissionError:
+                raise PermissionError(f"Permission denied deleting '{filepath}'")
+            except Exception as e:
+                raise Exception(f"Error deleting file '{filepath}': {str(e)}")                
+        elif isinstance(node, FileSize):
+            filepath = self.evaluate(node.FilePath, context)
+            if not isinstance(filepath, str):
+                raise TypeError("FileSize FilePath must be a string")
+            try:
+                import os
+                if os.path.exists(filepath):
+                    return os.path.getsize(filepath)
+                else:
+                    raise FileNotFoundError(f"File '{filepath}' not found")
+            except Exception as e:
+                raise Exception(f"Error getting size of file '{filepath}': {str(e)}")               
+        elif isinstance(node, ListFiles):
+            dirpath = self.evaluate(node.DirectoryPath, context)
+            pattern = self.evaluate(node.Pattern, context)
+            
+            if not isinstance(dirpath, str):
+                raise TypeError("ListFiles DirectoryPath must be a string")
+            if not isinstance(pattern, str):
+                raise TypeError("ListFiles Pattern must be a string")
+                
+            try:
+                import os
+                import glob
+                if not os.path.exists(dirpath):
+                    raise FileNotFoundError(f"Directory '{dirpath}' not found")
+                if not os.path.isdir(dirpath):
+                    raise NotADirectoryError(f"'{dirpath}' is not a directory")
+                    
+                search_pattern = os.path.join(dirpath, pattern)
+                files = glob.glob(search_pattern)
+                return [os.path.basename(f) for f in files if os.path.isfile(f)]
+            except Exception as e:
+                raise Exception(f"Error listing files in '{dirpath}': {str(e)}")
+        elif isinstance(node, Lambda):
+            def lambda_func(*args):
+                local_context = context.copy()
+
+                if len(args) != len(node.Parameters):
+                    raise ValueError(f"Lambda expects {len(node.Parameters)} arguments, got {len(args)}")
+                
+                for param, arg in zip(node.Parameters, args):
+                    local_context[param] = arg
+                return self.evaluate(node.Body, local_context)
+            
+            return lambda_func      
+        elif isinstance(node, MapFunction):
+            func = self.evaluate(node.Function, context)
+            iterable = self.evaluate(node.Iterable, context)
+            
+            if not hasattr(iterable, '__iter__'):
+                raise TypeError("MapFunction Iterable must be iterable")
+            
+            result = []
+            for item in iterable:
+                if callable(func):
+                    result.append(func(item))
+                elif isinstance(func, str):
+                    func_def = context.get(func)
+                    if isinstance(func_def, DefineFunction):
+                        local_context = context.copy()
+                        if len(func_def.Param) != 1:
+                            raise ValueError(f"MapFunction expects function with 1 parameter, got {len(func_def.Param)}")
+                        local_context[func_def.Param[0]] = item
+                        func_result = None
+                        for stmt in func_def.Body:
+                            func_result = self.evaluate(stmt, local_context)
+                            if isinstance(stmt, Return):
+                                break
+                        result.append(func_result)
+                    else:
+                        raise NameError(f"Function '{func}' is not defined")
+                else:
+                    raise TypeError("MapFunction Function must be callable or function name")
+
+            return result 
+        elif isinstance(node, FilterFunction):
+            func = self.evaluate(node.Function, context)
+            iterable = self.evaluate(node.Iterable, context)
+            
+            if not hasattr(iterable, '__iter__'):
+                raise TypeError("FilterFunction Iterable must be iterable")
+            
+            result = []
+            for item in iterable:
+                should_include = False
+                if callable(func):
+                    should_include = func(item)
+                elif isinstance(func, str):
+                    func_def = context.get(func)
+                    if isinstance(func_def, DefineFunction):
+                        local_context = context.copy()
+                        if len(func_def.Param) != 1:
+                            raise ValueError(f"FilterFunction expects function with 1 parameter, got {len(func_def.Param)}")
+                        local_context[func_def.Param[0]] = item
+                        func_result = None
+                        for stmt in func_def.Body:
+                            func_result = self.evaluate(stmt, local_context)
+                            if isinstance(stmt, Return):
+                                break
+                        should_include = func_result
+                    else:
+                        raise NameError(f"Function '{func}' is not defined")
+                else:
+                    raise TypeError("FilterFunction Function must be callable or function name")
+                
+                if should_include:
+                    result.append(item)
+            
+            return result
+        elif isinstance(node, ReduceFunction):
+            func = self.evaluate(node.Function, context)
+            iterable = self.evaluate(node.Iterable, context)
+            
+            if not hasattr(iterable, '__iter__'):
+                raise TypeError("ReduceFunction Iterable must be iterable")
+            
+            items = list(iterable)
+            if not items:
+                if isinstance(node.InitialValue, ObjNONE):
+                    raise ValueError("ReduceFunction of empty sequence with no initial value")
+                return self.evaluate(node.InitialValue, context)
+            if isinstance(node.InitialValue, ObjNONE):
+                accumulator = items[0]
+                items = items[1:]
+            else:
+                accumulator = self.evaluate(node.InitialValue, context)
+
+            for item in items:
+                if callable(func):
+                    accumulator = func(accumulator, item)
+                elif isinstance(func, str):
+                    func_def = context.get(func)
+                    if isinstance(func_def, DefineFunction):
+                        local_context = context.copy()
+                        if len(func_def.Param) != 2:
+                            raise ValueError(f"ReduceFunction expects function with 2 parameters, got {len(func_def.Param)}")
+                        local_context[func_def.Param[0]] = accumulator
+                        local_context[func_def.Param[1]] = item
+                        func_result = None
+                        for stmt in func_def.Body:
+                            func_result = self.evaluate(stmt, local_context)
+                            if isinstance(stmt, Return):
+                                break
+                        accumulator = func_result
+                    else:
+                        raise NameError(f"Function '{func}' is not defined")
+                else:
+                    raise TypeError("ReduceFunction Function must be callable or function name")
+            
+            return accumulator
         else:
             global runnable
             runnable = False
             raise TypeError(f"{type(node)}")
 
 E = Evaluate()
-def show_result(output, qw):
+# Replace your existing show_result and show_evaluate_output functions with these:
+
+import threading
+import queue
+
+def show_result(output_queue=None, qw=100):
     root2 = tk.Tk()
-    root2.title('ASTLANG OUTPUT')
+    root2.title('ASTLANG OUTPUT - REAL TIME')
+    root2.geometry('1000x600')
 
     output_label = tk.Label(root2, text='OUTPUT:', font=('Consolas', 12,'italic bold'), width=20, justify='left')
     output_label.pack()
 
-    entry = tk.Text(root2, font=('Consolas',12,'bold'), width=qw)
-    entry.pack(padx=10, pady=15)
+    # Create frame for text widget and buttons
+    main_frame = tk.Frame(root2)
+    main_frame.pack(expand=True, fill='both', padx=10, pady=15)
 
-    entry.insert("1.0", output)
-    entry.config(state='disabled') 
+    entry = tk.Text(main_frame, font=('Consolas',12,'bold'), width=qw, height=30,
+                   background="#1E1E1E", foreground="#D4D4D4", insertbackground="white")
+    entry.pack(expand=True, fill='both')
 
+    # Add control buttons
+    button_frame = tk.Frame(root2)
+    button_frame.pack(side='bottom', fill='x', padx=5, pady=5)
+    
+    execution_running = {'value': True}
+    
+    def stop_execution():
+        execution_running['value'] = False
+        entry.insert(tk.END, "\n[EXECUTION STOPPED BY USER]\n")
+        entry.see(tk.END)
+        
+    def clear_output():
+        entry.delete(1.0, tk.END)
+    
+    stop_button = tk.Button(button_frame, text="STOP EXECUTION", command=stop_execution,
+                           font=('Consolas', 10, 'bold'), bg='red', fg='white')
+    stop_button.pack(side='left', padx=5)
+    
+    clear_button = tk.Button(button_frame, text="CLEAR OUTPUT", command=clear_output,
+                            font=('Consolas', 10, 'bold'), bg='blue', fg='white')
+    clear_button.pack(side='left', padx=5)
+
+    # If no queue provided, just insert static output and return
+    if output_queue is None:
+        entry.insert("1.0", "")
+        entry.config(state='disabled')
+        root2.mainloop()
+        return
+
+    # Real-time output updating
+    def update_output():
+        try:
+            while not output_queue.empty():
+                text = output_queue.get_nowait()
+                if text == "__EXECUTION_COMPLETE__":
+                    entry.insert(tk.END, "\n[EXECUTION COMPLETED]\n")
+                    execution_running['value'] = False
+                elif text == "__EXECUTION_ERROR__":
+                    entry.insert(tk.END, "\n[EXECUTION ERROR]\n")
+                    execution_running['value'] = False
+                else:
+                    entry.insert(tk.END, text)
+                entry.see(tk.END)
+                root2.update_idletasks()
+        except queue.Empty:
+            pass
+        
+        # Continue updating if execution is still running
+        if execution_running['value']:
+            root2.after(50, update_output)
+
+    # Start the output updating
+    update_output()
+
+    # Handle window closing
+    def on_closing():
+        execution_running['value'] = False
+        root2.destroy()
+        
+    root2.protocol("WM_DELETE_WINDOW", on_closing)
     root2.mainloop()
+
 def show_evaluate_output():
-    buffer = io.StringIO()
-    old_stdout = sys.stdout
-    sys.stdout = buffer
-    try:
-        E.evaluate(content, context)
-    finally:
-        sys.stdout = old_stdout
-    output = buffer.getvalue()
-    show_result(output, 100)
-    output = ''
+    output_queue = queue.Queue()
+    
+    class RealTimeStdout:
+        def __init__(self, queue):
+            self.queue = queue
+            self.original_stdout = sys.stdout
+            
+        def write(self, text):
+            if text:
+                self.queue.put(text)
+                if "__EXIT_IDE__" in text:
+                    self.queue.put("__EXIT_IDE__")
+            self.original_stdout.write(text)
+            self.original_stdout.flush()
+        
+        def flush(self):
+            self.original_stdout.flush()
+    gui_thread = threading.Thread(target=lambda: show_result(output_queue), daemon=True)
+    gui_thread.start()
+    
+    time.sleep(0.1)
+    
+    def execute_code():
+        real_time_stdout = RealTimeStdout(output_queue)
+        original_stdout = sys.stdout
+        sys.stdout = real_time_stdout
+        
+        try:
+            class RealTimeEvaluate(Evaluate):
+                def evaluate(self, node, context):
+                    if isinstance(node, (Loop, IfCondition)):
+                        time.sleep(0.001) 
+                    return super().evaluate(node, context)
+            
+            rt_evaluator = RealTimeEvaluate()
+            rt_evaluator.evaluate(content, context)
+            
+            output_queue.put("__EXECUTION_COMPLETE__")
+            
+        except Exception as e:
+            output_queue.put(f"\n[ERROR]: {str(e)}\n")
+            import traceback
+            output_queue.put(traceback.format_exc())
+            output_queue.put("__EXECUTION_ERROR__")
+        finally:
+            sys.stdout = original_stdout
+    execution_thread = threading.Thread(target=execute_code, daemon=True)
+    execution_thread.start()
+    
+    gui_thread.join()
 ran = False
 def MAIN():
     if main:
         try:
-            while True:
-                txteditor_ui()
-                if runnable:
-                    show_evaluate_output()
-                else:
-                    return
+            txteditor_ui()
+            if runnable:
+                show_evaluate_output()
+            else:
+                return
         except NameError:
             messagebox.showerror('ERROR', 'DID NOT RECIEVE ANY CODE FOR IDE')
             traceback.print_exc()
@@ -2068,4 +2496,3 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
-
