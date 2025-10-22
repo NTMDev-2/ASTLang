@@ -1,12 +1,11 @@
 try:
-    import io, sys, time, traceback, inspect, math
+    import io, sys, time, traceback, inspect, math, threading, queue
     from tkinter import messagebox
     import tkinter as tk
     from random import randint
 except ModuleNotFoundError:
     print('System exception ; ModuleNotFoundError ; Do you have Python installed correctly?')
 context: dict[str, object] = dict() # Initialize main register
-
 info = """
 DEFAULT MESSAGE FROM IDE:
 'NTMDev ...'
@@ -20,9 +19,9 @@ Python 3.12 Build 2025, Version 3.12.0 "NEWEST"
 Designed with GitHub Copilot
 Created by NTMDev (2025)
 
-Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math
+Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue
 
-Current Version Stored: ASTLang 31, Release 2 [PRE-DEVELOPMENT]
+Current Version Stored: ASTLang 32, Release 2 [PRE-DEVELOPMENT]
 
 Currently Known Bugs:
 - File I/O commands do not have kernel level permissions to update files, through ":[state] FilePath", "no update"
@@ -30,11 +29,9 @@ Currently Known Bugs:
 Functions (COMING SOON): Import()
 
 Adding: 
-- superclass inheritance (coming ASTLang 35)
 - custom modules (coming ASTLang 33)
 
-Added: FileRead(), FileWrite(), FileAppend(), FileDelete(), FileExists(), FileSize(), ListFiles(), Lambda(), MapFunction()
-FilterFunction(), ReduceFunction()
+Added: Super class inheritance from child classes to parent classes for easier type checking, implementation
 Updated: Live console output, including errors 
 ----------------------------------------------------------------------------------------------------------------
 """
@@ -77,12 +74,13 @@ def txteditor_ui(initial=''):
     autocomplete_box = None
 
     def submit(event=None):
-        global content
+        nonlocal content
         raw_text = code_text.get("1.0", tk.END).strip()
         try:
             content = eval(raw_text, globals())
         except Exception as e:
             print(f"Error: {e}")
+            content = None
         root.destroy()
 
     def update_line_numbers(event=None):
@@ -652,7 +650,7 @@ def txteditor_ui(initial=''):
         code_text.insert("1.0", code_as_text)
         current_file = filename
 
-
+    content = ''
 
     code_text.bind("<Control-o>", lambda e: open_file(e))
     code_text.bind("<Control-s>", lambda e: save_file(e))
@@ -1034,7 +1032,7 @@ class StringReplace(NodeParent):
         self.OldSubstring = OldSubstring
         self.NewSubstring = NewSubstring
 class FormattedString(NodeParent):
-    def __init__(self, FormatString, *Args):
+    def __init__(self, FormatString, Args=ListAssignment()):
         self.FormatString = FormatString
         self.Args = Args
 
@@ -1122,6 +1120,21 @@ class MethodCall(FunctionParent):
         self.MethodName = MethodName
         self.Args = Args
 
+class SuperClass(NodeParent):
+    def __init__(self, ChildClassName, ParentClassName, Methods=ListAssignment(), Properties=ListAssignment()):
+        self.ChildClassName = ChildClassName
+        self.ParentClassName = ParentClassName 
+        self.Methods = Methods 
+        self.Properties = Properties  
+class Super(NodeParent):
+    def __init__(self, MethodName, Args=ListAssignment()):
+        self.MethodName = MethodName  
+        self.Args = Args
+class IsInstanceOf(NodeParent):
+    def __init__(self, Object, ClassName):
+        self.Object = Object
+        self.ClassName = ClassName
+
 class Ord(NodeParent):
     def __init__(self, Str):
         self.Str = Str
@@ -1171,6 +1184,8 @@ class Evaluate():
                     widget.destroy()
             tk._default_root.quit()
             sys.exit(code)
+        elif isinstance(node, type(...)):
+            return None
         elif isinstance(node, type):
             print('[ERROR] Did not recieve arguments for function')
             return
@@ -1226,6 +1241,24 @@ class Evaluate():
             l = self.evaluate(node.ListName, context)
             i = self.evaluate(node.Index, context)
             return l[i]
+        elif isinstance(node, FuncCall):
+            if isinstance(node.Function, Print):
+                contents = node.Function.Contents
+                value = self.evaluate(contents, context)
+    
+                if str(value) == "Are you mad? That's a 12-year-old scotch!":
+                    raise MemoryError('we opened it yesterday (Reference: Day After Tomorrow)')
+                end_param = node.Function.End
+                if isinstance(end_param, PrimitiveWrapper):
+                    end_val = end_param.V
+                else:
+                    end_val = self.evaluate(end_param, context)
+                
+                if isinstance(value, str) and value in context:
+                    print(context[value], end=end_val)
+                else:
+                    print(value, end=end_val)
+                return None
         elif isinstance(node, ListEdit):
             mode = node.EditType
             valid_modes = {'append', 'del', 'clear', 'sort', 'pop', 'reverse'}
@@ -1311,13 +1344,13 @@ class Evaluate():
                     print(value, end=end_val)
                 return None
         elif isinstance(node, Len):
-                var = self.evaluate(node.Function.Var, context)
+                var = self.evaluate(node.Var, context)
                 return len(var)
         elif isinstance(node, Max):
-                var = list(self.evaluate(node.Function.Var, context))
+                var = list(self.evaluate(node.Var, context))
                 return max(var)
         elif isinstance(node, Min):
-                var = list(self.evaluate(node.Function.Var, context))
+                var = list(self.evaluate(node.Var, context))
                 return min(var)
         elif isinstance(node, Condition):
             left = self.evaluate(node.Left, context)
@@ -1793,7 +1826,7 @@ class Evaluate():
                 for stmt in node.ExceptBody:
                     result = self.evaluate(stmt, context)
             finally:
-                if node.FinallyBody:
+                if not isinstance(node.FinallyBody, ObjNONE):
                     for stmt in node.FinallyBody:
                         self.evaluate(stmt, context)
             return result
@@ -1855,12 +1888,14 @@ class Evaluate():
             if not isinstance(lv, list):
                 raise TypeError('Median expects list')
             mvar = sorted(lv)
-            MedianIndice = None
+            
             if len(mvar) % 2 == 1:
-                MedianIndice = len(mvar)//2
+                median_index = len(mvar) // 2
+                return mvar[median_index]
             else:
-                MedianIndice = (mvar[len(mvar)//2-1] + mvar[len(mvar)//2])/2
-            return mvar[MedianIndice]
+                mid1 = len(mvar) // 2 - 1
+                mid2 = len(mvar) // 2
+                return (mvar[mid1] + mvar[mid2]) / 2
         elif isinstance(node, Mode):
             lv = self.evaluate(node.List, context)
             if not isinstance(lv, list):
@@ -1873,7 +1908,7 @@ class Evaluate():
                 if v == max_count:
                     return k
         elif isinstance(node, PauseExecution):
-            time.sleep(self.evaluate(node.Miliseconds)/1000, context)
+            time.sleep(self.evaluate(node.Miliseconds, context)/1000)
         elif isinstance(node, Raise):
             import builtins
             err_text = self.evaluate(node.ErrorText, context)
@@ -1935,57 +1970,156 @@ class Evaluate():
                         return False
             else:
                 return isinstance(value, type_name)
+                # Find the FormattedString evaluation and replace it with:
         elif isinstance(node, FormattedString):
             format_string = self.evaluate(node.FormatString, context)
-            args = [self.evaluate(arg, context) for arg in node.Args]
+
+            if hasattr(node.Args, 'Lst'): 
+                args = [self.evaluate(arg, context) for arg in node.Args.Lst]
+            elif isinstance(node.Args, list):
+                args = [self.evaluate(arg, context) for arg in node.Args]
+            else:
+                args = [self.evaluate(node.Args, context)]
+            
             if not isinstance(format_string, str):
                 raise TypeError("FormattedString FormatString must evaluate to a string")
             return format_string.format(*args)
         elif isinstance(node, DefineClass):
+            class_name = node.Name
+            base_class = self.evaluate(node.Base, context) if not isinstance(node.Base, ObjNONE) else None
+            
             class_def = {
-                "name": node.Name,
-                "body": node.Body,
-                "base": self.evaluate(node.Base, context) if not isinstance(node.Base, ObjNONE) else None
+                'type': 'class',
+                'name': class_name,
+                'methods': {},
+                'properties': {},
+                'constructor': None,
+                'parent': base_class
             }
-            context[node.Name] = class_def
+            
+            for stmt in node.Body:
+                if isinstance(stmt, DefineFunction):
+                    if stmt.Name == '__init__':
+                        class_def['constructor'] = {
+                            'params': stmt.Param,
+                            'body': stmt.Body
+                        }
+                    else:
+                        class_def['methods'][stmt.Name] = {
+                            'params': stmt.Param,
+                            'body': stmt.Body
+                        }
+                elif isinstance(stmt, Assignment):
+                    class_def['properties'][stmt.Name] = self.evaluate(stmt.Val, context)
+            
+            if base_class and base_class in context:
+                parent_class = context[base_class]
+                if isinstance(parent_class, dict) and parent_class.get('type') == 'class':
+                    inherited_methods = parent_class.get('methods', {}).copy()
+                    inherited_properties = parent_class.get('properties', {}).copy()
+                    
+                    inherited_methods.update(class_def['methods'])
+                    inherited_properties.update(class_def['properties'])
+                    
+                    class_def['methods'] = inherited_methods
+                    class_def['properties'] = inherited_properties
+                    
+                    if not class_def['constructor'] and parent_class.get('constructor'):
+                        class_def['constructor'] = parent_class['constructor']
+            
+            # Store the class in context
+            context[class_name] = class_def
             return class_def
         elif isinstance(node, NewInstance):
-            class_def = context.get(node.ClassName)
+            class_name = node.ClassName
+            class_def = context.get(class_name)
+            
             if not class_def:
-                raise NameError(f"Class '{node.ClassName}' is not defined")
-
-            instance = {"__class__": class_def["name"]}
-            for stmt in class_def["body"]:
-                if isinstance(stmt, Assignment):
-                    instance[stmt.Name] = self.evaluate(stmt.Val, context)
-                elif isinstance(stmt, DefineFunction) and stmt.Name == "__init__":
-                    local_context = context.copy()
-                    local_context["self"] = instance
-                    for param, arg in zip(stmt.Param[1:], node.Args):
-                        local_context[param] = self.evaluate(arg, context)
-                    for s in stmt.Body:
-                        self.evaluate(s, local_context)
+                raise NameError(f"Class '{class_name}' is not defined")
+            
+            if not isinstance(class_def, dict) or class_def.get('type') != 'class':
+                raise TypeError(f"'{class_name}' is not a class")
+            
+            instance = {
+                'class': class_name,
+                'properties': class_def['properties'].copy()
+            }
+            
+            for prop_name, prop_value in class_def['properties'].items():
+                instance[prop_name] = prop_value
+            
+            if 'constructor' in class_def and class_def['constructor']:
+                local_context = context.copy()
+                local_context['self'] = instance
+                
+                constructor = class_def['constructor']
+                
+                # Fix: Handle ListAssignment properly
+                if hasattr(node.Args, 'Lst'):
+                    args_list = node.Args.Lst
+                elif isinstance(node.Args, list):
+                    args_list = node.Args
+                else:
+                    args_list = [node.Args] if node.Args else []
+                
+                constructor_params = constructor.get('params', [])
+                if len(args_list) != len(constructor_params):
+                    raise ValueError(f"Constructor expects {len(constructor_params)} arguments, got {len(args_list)}")
+                
+                params = constructor_params[:]
+                if params and params[0] == 'self':
+                    params = params[1:]
+                    
+                for param, arg in zip(params, args_list):
+                    local_context[param] = self.evaluate(arg, context)
+                
+                for stmt in constructor.get('body', []):
+                    self.evaluate(stmt, local_context)
+                    
+                if 'self' in local_context:
+                    instance.update(local_context['self'])
+            
             return instance
         elif isinstance(node, MethodCall):
             obj = self.evaluate(node.Obj, context)
-            class_def = context.get(obj["__class__"])
+            method_name = node.MethodName
+            
+            if not isinstance(obj, dict) or 'class' not in obj:
+                raise TypeError("MethodCall requires an object instance")
+            
+            class_name = obj['class']
+            class_def = context.get(class_name)
+            
             if not class_def:
-                raise NameError(f"Class '{obj['__class__']}' is not defined")
-
-            method = None
-            for stmt in class_def["body"]:
-                if isinstance(stmt, DefineFunction) and stmt.Name == node.MethodName:
-                    method = stmt
-                    break
-            if not method:
-                raise NameError(f"Method '{node.MethodName}' is not defined in class '{obj['__class__']}'")
+                raise NameError(f"Class '{class_name}' is not defined")
+            if method_name not in class_def['methods']:
+                raise AttributeError(f"'{class_name}' object has no method '{method_name}'")
+        
+            method = class_def['methods'][method_name]
             local_context = context.copy()
-            local_context["self"] = obj
-            for param, arg in zip(method.Param[1:], node.Args):
+            local_context['self'] = obj
+            params = method.get('params', [])
+            if params and params[0] == 'self':
+                params = params[1:]
+            if hasattr(node.Args, 'Lst'):
+                args_list = node.Args.Lst
+            elif isinstance(node.Args, list):
+                args_list = node.Args
+            else:
+                args_list = [node.Args] if node.Args else []
+            
+            if len(args_list) != len(params):
+                raise ValueError(f"Method '{method_name}' expects {len(params)} arguments, got {len(args_list)}")
+            
+            for param, arg in zip(params, args_list):
                 local_context[param] = self.evaluate(arg, context)
+            
             result = None
-            for s in method.Body:
-                result = self.evaluate(s, local_context)
+            for stmt in method.get('body', []):
+                result = self.evaluate(stmt, local_context)
+                if isinstance(stmt, Return):
+                    break
+            
             return result
         elif isinstance(node, GetAttr):
             obj = self.evaluate(node.Obj, context)
@@ -2329,17 +2463,107 @@ class Evaluate():
                     raise TypeError("ReduceFunction Function must be callable or function name")
             
             return accumulator
+        elif isinstance(node, SuperClass):
+            child_name = self.evaluate(node.ChildClassName, context)
+            parent_name = self.evaluate(node.ParentClassName, context)
+            
+            if not isinstance(child_name, str) or not isinstance(parent_name, str):
+                raise TypeError("SuperClass names must be strings")
+
+            if parent_name not in context:
+                raise NameError(f"Parent class '{parent_name}' is not defined")
+            
+            parent_class = context[parent_name]
+            if not isinstance(parent_class, dict) or 'type' not in parent_class or parent_class['type'] != 'class':
+                raise TypeError(f"'{parent_name}' is not a class")
+
+            child_class = {
+                'type': 'class',
+                'parent': parent_name,
+                'methods': parent_class['methods'].copy(),
+                'properties': parent_class['properties'].copy(),
+                'constructor': parent_class.get('constructor', []) 
+            }
+            
+            additional_methods = self.evaluate(node.Methods, context)
+            if isinstance(additional_methods, list):
+                for method in additional_methods:
+                    if isinstance(method, tuple) and len(method) == 2:
+                        method_name, method_def = method
+                        child_class['methods'][method_name] = method_def
+            
+            additional_props = self.evaluate(node.Properties, context)
+            if isinstance(additional_props, list):
+                for prop in additional_props:
+                    if isinstance(prop, tuple) and len(prop) == 2:
+                        prop_name, prop_value = prop
+                        child_class['properties'][prop_name] = prop_value
+            
+            context[child_name] = child_class
+            return f"Class '{child_name}' inherits from '{parent_name}'"
+        elif isinstance(node, Super):
+            method_name = self.evaluate(node.MethodName, context)
+            args = self.evaluate(node.Args, context)
+            if 'self' not in context:
+                raise RuntimeError("Super() can only be called within a method")
+            
+            current_object = context['self']
+            if 'class' not in current_object:
+                raise RuntimeError("Current object has no class information")
+            
+            current_class_name = current_object['class']
+            current_class = context[current_class_name]
+            
+            if 'parent' not in current_class:
+                raise RuntimeError(f"Class '{current_class_name}' has no parent class")
+            
+            parent_class_name = current_class['parent']
+            parent_class = context[parent_class_name]
+            
+            # call the parent method
+            if method_name not in parent_class['methods']:
+                raise AttributeError(f"Parent class '{parent_class_name}' has no method '{method_name}'")
+            
+            parent_method = parent_class['methods'][method_name]
+            
+            local_context = context.copy()
+            local_context['self'] = current_object
+            
+            if len(args) != len(parent_method['params']):
+                raise ValueError(f"Method '{method_name}' expects {len(parent_method['params'])} arguments, got {len(args)}")
+            
+            for param, arg in zip(parent_method['params'], args):
+                local_context[param] = arg
+            result = None
+            for stmt in parent_method['body']:
+                result = self.evaluate(stmt, local_context)
+                if isinstance(stmt, Return):
+                    break
+            
+            return result
+        elif isinstance(node, IsInstanceOf):
+            obj = self.evaluate(node.Object, context)
+            class_name = self.evaluate(node.ClassName, context)
+            
+            if not isinstance(class_name, str):
+                raise TypeError("ClassName must be a string")
+            if not isinstance(obj, dict) or 'class' not in obj:
+                return False
+            if obj['class'] == class_name:
+                return True
+            current_class = context.get(obj['class'])
+            while current_class and 'parent' in current_class:
+                if current_class['parent'] == class_name:
+                    return True
+                current_class = context.get(current_class['parent'])
+            
+            return False
         else:
             global runnable
             runnable = False
             raise TypeError(f"{type(node)}")
 
 E = Evaluate()
-# Replace your existing show_result and show_evaluate_output functions with these:
-
-import threading
-import queue
-
 def show_result(output_queue=None, qw=100):
     root2 = tk.Tk()
     root2.title('ASTLANG OUTPUT - REAL TIME')
@@ -2348,7 +2572,6 @@ def show_result(output_queue=None, qw=100):
     output_label = tk.Label(root2, text='OUTPUT:', font=('Consolas', 12,'italic bold'), width=20, justify='left')
     output_label.pack()
 
-    # Create frame for text widget and buttons
     main_frame = tk.Frame(root2)
     main_frame.pack(expand=True, fill='both', padx=10, pady=15)
 
@@ -2356,7 +2579,6 @@ def show_result(output_queue=None, qw=100):
                    background="#1E1E1E", foreground="#D4D4D4", insertbackground="white")
     entry.pack(expand=True, fill='both')
 
-    # Add control buttons
     button_frame = tk.Frame(root2)
     button_frame.pack(side='bottom', fill='x', padx=5, pady=5)
     
@@ -2377,15 +2599,11 @@ def show_result(output_queue=None, qw=100):
     clear_button = tk.Button(button_frame, text="CLEAR OUTPUT", command=clear_output,
                             font=('Consolas', 10, 'bold'), bg='blue', fg='white')
     clear_button.pack(side='left', padx=5)
-
-    # If no queue provided, just insert static output and return
     if output_queue is None:
         entry.insert("1.0", "")
         entry.config(state='disabled')
         root2.mainloop()
         return
-
-    # Real-time output updating
     def update_output():
         try:
             while not output_queue.empty():
@@ -2418,28 +2636,28 @@ def show_result(output_queue=None, qw=100):
     root2.protocol("WM_DELETE_WINDOW", on_closing)
     root2.mainloop()
 
-def show_evaluate_output():
+
+def show_evaluate_output(code_content):
+    if not code_content:
+        print("No code content received!")
+        return
+    
     output_queue = queue.Queue()
     
     class RealTimeStdout:
         def __init__(self, queue):
             self.queue = queue
-            self.original_stdout = sys.stdout
             
         def write(self, text):
             if text:
                 self.queue.put(text)
-                if "__EXIT_IDE__" in text:
-                    self.queue.put("__EXIT_IDE__")
-            self.original_stdout.write(text)
-            self.original_stdout.flush()
         
         def flush(self):
-            self.original_stdout.flush()
+            pass
+    
     gui_thread = threading.Thread(target=lambda: show_result(output_queue), daemon=True)
     gui_thread.start()
-    
-    time.sleep(0.1)
+    time.sleep(0.2)
     
     def execute_code():
         real_time_stdout = RealTimeStdout(output_queue)
@@ -2447,6 +2665,8 @@ def show_evaluate_output():
         sys.stdout = real_time_stdout
         
         try:
+            print("Starting execution...\n\n")
+            
             class RealTimeEvaluate(Evaluate):
                 def evaluate(self, node, context):
                     if isinstance(node, (Loop, IfCondition)):
@@ -2454,7 +2674,7 @@ def show_evaluate_output():
                     return super().evaluate(node, context)
             
             rt_evaluator = RealTimeEvaluate()
-            rt_evaluator.evaluate(content, context)
+            rt_evaluator.evaluate(code_content, context)
             
             output_queue.put("__EXECUTION_COMPLETE__")
             
@@ -2465,17 +2685,19 @@ def show_evaluate_output():
             output_queue.put("__EXECUTION_ERROR__")
         finally:
             sys.stdout = original_stdout
-    execution_thread = threading.Thread(target=execute_code, daemon=True)
+
+    execution_thread = threading.Thread(target=execute_code, daemon=False)
     execution_thread.start()
-    
+    execution_thread.join()
     gui_thread.join()
 ran = False
 def MAIN():
     if main:
         try:
-            txteditor_ui()
-            if runnable:
-                show_evaluate_output()
+            while True:
+                code_content = txteditor_ui() 
+                if runnable and code_content:
+                    show_evaluate_output(code_content)
             else:
                 return
         except NameError:
@@ -2496,4 +2718,3 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
-
