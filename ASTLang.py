@@ -9,7 +9,7 @@ context: dict[str, object] = dict() # Initialize main register
 info = """
 DEFAULT MESSAGE FROM IDE:
 'NTMDev ...'
-Note from NTMDev: ASTLang 27 is now unsupported
+Note from NTMDev: ASTLang 33 is now unsupported
 ----------------------------------------------------------------------------------------------------------------
 ASTLang for PC, Local based (IDE)
 Supports IDE usuage and file saving with .astlang
@@ -2907,3 +2907,4 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
+
