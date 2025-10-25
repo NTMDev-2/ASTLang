@@ -21,17 +21,17 @@ Created by NTMDev (2025)
 
 Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue
 
-Current Version Stored: ASTLang 32, Release 2 [PRE-DEVELOPMENT]
+Current Version Stored: ASTLang 36, Beta-Release 8 [ALPHA]
 
 Currently Known Bugs:
-- File I/O commands do not have kernel level permissions to update files, through ":[state] FilePath", "no update"
+- No file updating permissions for file I/O commands, through ":[state] FilePath", "no update"
 
 Functions (COMING SOON): Import()
 
 Adding: 
-- custom modules (coming ASTLang 33)
+- custom modules (coming ASTLang 40)
 
-Added: Super class inheritance from child classes to parent classes for easier type checking, implementation
+Added: Zip(), Shuffle(), Sort(), ExecCode(), EvalExpression(), Enumerate(), Sample(), Flatten(), CallFunction() 
 Updated: Live console output, including errors 
 ----------------------------------------------------------------------------------------------------------------
 """
@@ -82,7 +82,6 @@ def txteditor_ui(initial=''):
             print(f"Error: {e}")
             content = None
         root.destroy()
-
     def update_line_numbers(event=None):
         try:
             if not code_text.winfo_exists():
@@ -97,7 +96,6 @@ def txteditor_ui(initial=''):
                 line_numbers.yview_moveto(code_text.yview()[0])
         except tk.TclError:
             pass
-
     def on_scroll(*args):
         if args[0] in ("moveto", "scroll"):
             code_text.yview(*args)
@@ -105,17 +103,13 @@ def txteditor_ui(initial=''):
         else:
             code_text.yview("moveto", args[0])
             line_numbers.yview("moveto", args[0])
-
-
     def get_all_exceptions(base=Exception):
         result = []
         for cls in base.__subclasses__():
             result.append(cls.__name__)
             result.extend(get_all_exceptions(cls))
         return result
-
     EXCEPTIONS = get_all_exceptions()
-
     def highlight(event=None):
         KEYWORDS = get_keywords()
         FUNCS = get_systemfuncs()
@@ -293,10 +287,26 @@ def txteditor_ui(initial=''):
     def get_signature(name):
         try:
             obj = eval(name, globals())
-            sig = str(inspect.signature(obj))
-            return f"{name}{sig}"
-        except Exception:
-            return None
+            sig = inspect.signature(obj)
+            
+            params = []
+            for param_name, param in sig.parameters.items():
+                if param.default == inspect.Parameter.empty:
+                    params.append(param_name)
+                else:
+                    if hasattr(param.default, '__class__') and hasattr(param.default.__class__, '__name__'):
+                        if param.default.__class__.__name__ == 'ObjNONE':
+                            default_name = "[None]"
+                        else:
+                            default_name = repr(param.default)
+                    else:
+                        default_name = repr(param.default)
+                    params.append(f"{param_name}={default_name}")
+            
+            result = f"{name}({', '.join(params)})"
+            return result
+        except Exception as e:
+            return f"{name}(...)"
     def show_autocomplete(suggestions):
         nonlocal autocomplete_box, listbox
         hide_autocomplete()
@@ -666,20 +676,58 @@ def get_user_input(prompt=""):
     result = {"value": None}
     root2 = tk.Tk()
     root2.withdraw()
-    popup = tk.Toplevel()
+    popup = tk.Toplevel(root2)
     popup.title("User Input")
-    popup.geometry("400x200")
-    popup.grab_set() 
-    if prompt:
-        tk.Label(popup, text=prompt, font=("Consolas", 12)).pack(pady=5)
-    text_widget = tk.Text(popup, height=5, font=("Consolas", 12))
-    text_widget.pack(expand=True, fill="both", padx=5, pady=5)
+    popup.geometry("500x250")
+    popup.grab_set()
+    popup.focus_set()
+    
+    prompt_text = prompt if prompt else "Enter input:"
+    prompt_label = tk.Label(popup, text=prompt_text, font=("Consolas", 12, "bold"), 
+                           wraplength=450, justify="left")
+    prompt_label.pack(pady=(10, 5), padx=10, fill="x")
+    
+    text_widget = tk.Text(popup, height=5, font=("Consolas", 12),
+                         bg="#2d2d2d", fg="#ffffff", insertbackground="#ffffff")
+    text_widget.pack(expand=True, fill="both", padx=10, pady=5)
+    text_widget.focus_set()
+    
     def submit():
-        result["value"] = text_widget.get("1.0", "end-1c") 
+        result["value"] = text_widget.get("1.0", "end-1c")
         popup.destroy()
         root2.destroy()
-    submit_btn = tk.Button(popup, text="Submit", command=submit, font=("Consolas", 12))
-    submit_btn.pack(pady=5)
+    
+    def on_enter(event=None):
+        if event and event.state & 0x4:
+            submit()
+        return "break"
+    
+    # Button frame
+    button_frame = tk.Frame(popup)
+    button_frame.pack(side="bottom", fill="x", padx=10, pady=5)
+    
+    submit_btn = tk.Button(button_frame, text="Submit (Ctrl+Enter)", command=submit, 
+                          font=("Consolas", 11, "bold"), bg="#4CAF50", fg="white")
+    submit_btn.pack(side="right", padx=5)
+    
+    def cancel_action():
+        result["value"] = "" 
+        popup.destroy()
+        root2.destroy()
+
+    cancel_btn = tk.Button(button_frame, text="Cancel", command=cancel_action,
+                        font=("Consolas", 11), bg="#f44336", fg="white")
+    cancel_btn.pack(side="right")
+    
+    text_widget.bind("<Control-Return>", on_enter)
+    popup.bind("<Escape>", lambda e: (setattr(result, 'value', ""), popup.destroy(), root2.destroy()))
+    
+    # Center the popup
+    popup.update_idletasks()
+    x = (popup.winfo_screenwidth() // 2) - (popup.winfo_width() // 2)
+    y = (popup.winfo_screenheight() // 2) - (popup.winfo_height() // 2)
+    popup.geometry(f"+{x}+{y}")
+    
     popup.wait_window() 
     return result["value"]
 
@@ -1172,6 +1220,45 @@ class ListFiles(IntepreterParent):
         self.DirectoryPath = DirectoryPath
         self.Pattern = Pattern
 
+class EvalExpression(NodeParent):
+    def __init__(self, Expression, Globals=ObjNONE(), Locals=ObjNONE()):
+        self.Expression = Expression
+        self.Globals = Globals
+        self.Locals = Locals
+class ExecCode(NodeParent):
+    def __init__(self, Code, Globals=ObjNONE(), Locals=ObjNONE()):
+        self.Code = Code
+        self.Globals = Globals
+        self.Locals = Locals
+class CallFunction(NodeParent):
+    def __init__(self, FunctionName, Args=ListAssignment(), Kwargs=DictionaryAssign([])):
+        self.FunctionName = FunctionName
+        self.Args = Args
+        self.Kwargs = Kwargs
+class Sort(NodeParent):
+    def __init__(self, List, Reverse=Boolean('False'), Key=ObjNONE()):
+        self.List = List
+        self.Reverse = Reverse
+        self.Key = Key
+class Zip(NodeParent):
+    def __init__(self, *Lists):
+        self.Lists = Lists
+class Shuffle(NodeParent):
+    def __init__(self, List):
+        self.List = List
+class Sample(NodeParent):
+    def __init__(self, List, Count):
+        self.List = List
+        self.Count = Count
+class Flatten(NodeParent):
+    def __init__(self, List, Depth=Integer(1)):
+        self.List = List
+        self.Depth = Depth
+class Enumerate(NodeParent):
+    def __init__(self, Iterable, Start=Integer(0)):
+        self.Iterable = Iterable
+        self.Start = Start
+
 primitive = (str, int, float, list, bool, dict, tuple)
 class Evaluate():
     def evaluate(self, node, context):
@@ -1563,6 +1650,7 @@ class Evaluate():
             opt = get_user_input(prompt=prompttxt)
             if self.evaluate(node.Echo, context):
                 print(opt)
+                return opt
             else:
                 return opt
         elif isinstance(node, ASTLangDir):
@@ -1832,7 +1920,7 @@ class Evaluate():
             return result
         elif isinstance(node, Sum):
             v = self.evaluate(node.Var, context)
-            if not isinstance(v, str):
+            if not isinstance(v, list):
                 raise Exception("Sum expects list argument")
             return sum(v)
         elif isinstance(node, Round):
@@ -2558,6 +2646,110 @@ class Evaluate():
                 current_class = context.get(current_class['parent'])
             
             return False
+        elif isinstance(node, EvalExpression):
+            expression = self.evaluate(node.Expression, context)
+            globals_dict = self.evaluate(node.Globals, context) if not isinstance(node.Globals, ObjNONE) else globals()
+            locals_dict = self.evaluate(node.Locals, context) if not isinstance(node.Locals, ObjNONE) else context
+            
+            if not isinstance(expression, str):
+                raise TypeError("EvalExpression requires a string expression")
+            
+            try:
+                return eval(expression, globals_dict, locals_dict)
+            except Exception as e:
+                raise Exception(f"Error evaluating expression '{expression}': {str(e)}")
+        elif isinstance(node, ExecCode):
+            code = self.evaluate(node.Code, context)
+            globals_dict = self.evaluate(node.Globals, context) if not isinstance(node.Globals, ObjNONE) else globals()
+            locals_dict = self.evaluate(node.Locals, context) if not isinstance(node.Locals, ObjNONE) else context
+            
+            if not isinstance(code, str):
+                raise TypeError("ExecCode requires a string code")
+            
+            try:
+                exec(code, globals_dict, locals_dict)
+                if locals_dict is context:
+                    context.update(locals_dict)
+                return None
+            except Exception as e:
+                raise Exception(f"Error executing code: {str(e)}")
+        elif isinstance(node, CallFunction):
+            func_name = self.evaluate(node.FunctionName, context)
+            args = self.evaluate(node.Args, context)
+            kwargs = self.evaluate(node.Kwargs, context)
+            
+            if func_name in context:
+                func = context[func_name]
+            else:
+                try:
+                    func = eval(func_name, globals())
+                except:
+                    raise NameError(f"Function '{func_name}' not found")
+            
+            if not callable(func):
+                raise TypeError(f"'{func_name}' is not callable")
+            
+            try:
+                if isinstance(args, list) and isinstance(kwargs, dict):
+                    return func(*args, **kwargs)
+                elif isinstance(args, list):
+                    return func(*args)
+                else:
+                    return func()
+            except Exception as e:
+                raise Exception(f"Error calling function '{func_name}': {str(e)}")
+        elif isinstance(node, Sort):
+            lst = self.evaluate(node.List, context)
+            reverse = self.evaluate(node.Reverse, context)
+            key_func = self.evaluate(node.Key, context) if not isinstance(node.Key, ObjNONE) else None
+            
+            if not isinstance(lst, list):
+                raise TypeError("Sort expects a list")
+            
+            if key_func:
+                if callable(key_func):
+                    return sorted(lst, key=key_func, reverse=reverse)
+                elif isinstance(key_func, str):
+                    try:
+                        key_func = eval(key_func, globals())
+                        return sorted(lst, key=key_func, reverse=reverse)
+                    except:
+                        raise ValueError(f"Invalid key function: {key_func}")
+            else:
+                return sorted(lst, reverse=reverse)
+        elif isinstance(node, Zip):
+            lists = [self.evaluate(lst, context) for lst in node.Lists]
+            return list(zip(*lists))
+        elif isinstance(node, Shuffle):
+            import random
+            lst = self.evaluate(node.List, context).copy()
+            random.shuffle(lst)
+            return lst
+        elif isinstance(node, Sample):
+            import random
+            lst = self.evaluate(node.List, context)
+            count = self.evaluate(node.Count, context)
+            return random.sample(lst, count)
+        elif isinstance(node, Flatten):
+            lst = self.evaluate(node.List, context)
+            depth = self.evaluate(node.Depth, context)
+            
+            def flatten_list(l, d):
+                if d <= 0:
+                    return l
+                result = []
+                for item in l:
+                    if isinstance(item, list):
+                        result.extend(flatten_list(item, d-1))
+                    else:
+                        result.append(item)
+                return result
+            
+            return flatten_list(lst, depth)
+        elif isinstance(node, Enumerate):
+            iterable = self.evaluate(node.Iterable, context)
+            start = self.evaluate(node.Start, context)
+            return list(enumerate(iterable, start))
         else:
             global runnable
             runnable = False
@@ -2635,8 +2827,6 @@ def show_result(output_queue=None, qw=100):
         
     root2.protocol("WM_DELETE_WINDOW", on_closing)
     root2.mainloop()
-
-
 def show_evaluate_output(code_content):
     if not code_content:
         print("No code content received!")
@@ -2694,10 +2884,9 @@ ran = False
 def MAIN():
     if main:
         try:
-            while True:
-                code_content = txteditor_ui() 
-                if runnable and code_content:
-                    show_evaluate_output(code_content)
+            code_content = txteditor_ui() 
+            if runnable and code_content:
+                show_evaluate_output(code_content)
             else:
                 return
         except NameError:
