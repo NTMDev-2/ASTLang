@@ -5,11 +5,19 @@ try:
     from random import randint
 except ModuleNotFoundError:
     print('System exception ; ModuleNotFoundError ; Do you have Python installed correctly?')
+    exit()
+
+try:
+    import pygame
+except:
+    print('Pygame was not detected. If you wish to use the graphics emulator, please install Pygame.')
+    print('Use pip install pygame')
+
 context: dict[str, object] = dict() # Initialize main register
 info = """
 DEFAULT MESSAGE FROM IDE:
 'NTMDev ...'
-Note from NTMDev: ASTLang 33 is now unsupported
+Note from NTMDev: ASTLang 35 is now unsupported
 ----------------------------------------------------------------------------------------------------------------
 ASTLang for PC, Local based (IDE)
 Supports IDE usuage and file saving with .astlang
@@ -21,7 +29,7 @@ Created by NTMDev (2025)
 
 Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue
 
-Current Version Stored: ASTLang 36, Beta-Release 8 [ALPHA]
+Current Version Stored: ASTLang 37, Release 1 [BIG UPDATE]
 
 Currently Known Bugs:
 - No file updating permissions for file I/O commands, through ":[state] FilePath", "no update"
@@ -31,7 +39,9 @@ Functions (COMING SOON): Import()
 Adding: 
 - custom modules (coming ASTLang 40)
 
-Added: Zip(), Shuffle(), Sort(), ExecCode(), EvalExpression(), Enumerate(), Sample(), Flatten(), CallFunction() 
+Added: GRAPHICS EMULATOR SUPPORT ImportGraphicsState(), GraphicsSetBackground(), GraphicsDrawRect(), GraphicsDrawCircle(), GraphicsDrawLine(),
+GraphicsDrawText(), GraphicsUpdate(), GraphicsGetEvents(), GraphicsCheckKey(), GraphicsGetMousePos(), GraphicsIsRunning(), GraphicsQuit(),
+GraphicsClock(), GraphicsLoadImage(), GraphicsDrawImage(), GraphicsPlaySound()
 Updated: Live console output, including errors 
 ----------------------------------------------------------------------------------------------------------------
 """
@@ -1258,6 +1268,190 @@ class Enumerate(NodeParent):
     def __init__(self, Iterable, Start=Integer(0)):
         self.Iterable = Iterable
         self.Start = Start
+
+class SetAssignment(ValueParent):
+    def __init__(self, *Elements):
+        self.Elements = Elements
+class SetOperations(NodeParent):
+    def __init__(self, Set1, Set2, Operation):
+        self.Set1 = Set1
+        self.Set2 = Set2
+        self.Operation = Operation 
+class SetMethods(NodeParent):
+    def __init__(self, SetVar, Method, Element=ObjNONE()):
+        self.SetVar = SetVar
+        self.Method = Method
+        self.Element = Element
+class SetContains(NodeParent):
+    def __init__(self, Set, Element):
+        self.Set = Set
+        self.Element = Element
+
+class DateTime(NodeParent):
+    def __init__(self, Year=ObjNONE(), Month=ObjNONE(), Day=ObjNONE(), Hour=Integer(0), Minute=Integer(0), Second=Integer(0)):
+        self.Year = Year
+        self.Month = Month
+        self.Day = Day
+        self.Hour = Hour
+        self.Minute = Minute
+        self.Second = Second
+class DateTimeNow(NodeParent):
+    def __init__(self):
+        pass
+class DateTimeFormat(NodeParent):
+    def __init__(self, DateTime, Format=String('%Y-%m-%d %H:%M:%S')):
+        self.DateTime = DateTime
+        self.Format = Format
+class DateTimeParse(NodeParent):
+    def __init__(self, DateString, Format=String('%Y-%m-%d %H:%M:%S')):
+        self.DateString = DateString
+        self.Format = Format
+class TimeDelta(NodeParent):
+    def __init__(self, Days=Integer(0), Hours=Integer(0), Minutes=Integer(0), Seconds=Integer(0)):
+        self.Days = Days
+        self.Hours = Hours
+        self.Minutes = Minutes
+        self.Seconds = Seconds
+class DateTimeAdd(NodeParent):
+    def __init__(self, DateTime, TimeDelta):
+        self.DateTime = DateTime
+        self.TimeDelta = TimeDelta
+class DateTimeSubtract(NodeParent):
+    def __init__(self, DateTime1, DateTime2):
+        self.DateTime1 = DateTime1
+        self.DateTime2 = DateTime2
+class DateTimeCompare(NodeParent):
+    def __init__(self, DateTime1, DateTime2, Operation):
+        self.DateTime1 = DateTime1
+        self.DateTime2 = DateTime2
+        self.Operation = Operation
+
+class Assert(NodeParent):
+    def __init__(self, Condition, Message=String('Assertion failed')):
+        self.Condition = Condition
+        self.Message = Message
+class WarningRaise(NodeParent):
+    def __init__(self, Message, Category=String('UserWarning')):
+        self.Message = Message
+        self.Category = Category
+class ErrorContext(NodeParent):
+    def __init__(self, Body, ErrorHandlers=ListAssignment()):
+        self.Body = Body
+        self.ErrorHandlers = ErrorHandlers  # List of (ErrorType, HandlerBody) tuples
+class CustomError(NodeParent):
+    def __init__(self, Name, BaseError=String('Exception')):
+        self.Name = Name
+        self.BaseError = BaseError
+class GetErrorInfo(NodeParent):
+    def __init__(self, Error):
+        self.Error = Error  # Returns traceback, message, type info
+
+class Statistics(NodeParent):
+    def __init__(self, Data, Operation):
+        self.Data = Data
+        self.Operation = Operation 
+class LinearAlgebra(NodeParent):
+    def __init__(self, Matrix1, Matrix2=ObjNONE(), Operation=String('transpose')):
+        self.Matrix1 = Matrix1
+        self.Matrix2 = Matrix2
+        self.Operation = Operation
+class Matrix(ValueParent):
+    def __init__(self, Rows):
+        self.Rows = Rows
+class Percentile(NodeParent):
+    def __init__(self, Data, Percentage):
+        self.Data = Data
+        self.Percentage = Percentage
+class StandardScore(NodeParent):
+    def __init__(self, Value, Mean, StdDev):
+        self.Value = Value
+        self.Mean = Mean
+        self.StdDev = StdDev
+class Regression(NodeParent):
+    def __init__(self, XData, YData, Type=String('linear')):
+        self.XData = XData
+        self.YData = YData
+        self.Type = Type
+
+class ImportGraphicsState(NodeParent):
+    def __init__(self, Width=Integer(800), Height=Integer(600), Title=String('ASTLang Graphics')):
+        self.Width = Width
+        self.Height = Height
+        self.Title = Title
+class GraphicsSetBackground(NodeParent):
+    def __init__(self, Color):
+        self.Color = Color
+class GraphicsDrawRect(NodeParent):
+    def __init__(self, X, Y, Width, Height, Color, Filled=Boolean('True')):
+        self.X = X
+        self.Y = Y
+        self.Width = Width
+        self.Height = Height
+        self.Color = Color
+        self.Filled = Filled
+class GraphicsDrawCircle(NodeParent):
+    def __init__(self, X, Y, Radius, Color, Filled=Boolean('True')):
+        self.X = X
+        self.Y = Y
+        self.Radius = Radius
+        self.Color = Color
+        self.Filled = Filled
+class GraphicsDrawLine(NodeParent):
+    def __init__(self, StartX, StartY, EndX, EndY, Color, Width=Integer(1)):
+        self.StartX = StartX
+        self.StartY = StartY
+        self.EndX = EndX
+        self.EndY = EndY
+        self.Color = Color
+        self.Width = Width
+class GraphicsDrawText(NodeParent):
+    def __init__(self, Text, X, Y, Color=ListAssignment(Integer(255), Integer(255), Integer(255)), 
+                 FontSize=Integer(24), FontName=String('Arial')):
+        self.Text = Text
+        self.X = X
+        self.Y = Y
+        self.Color = Color
+        self.FontSize = FontSize
+        self.FontName = FontName
+class GraphicsUpdate(NodeParent):
+    def __init__(self):
+        pass
+class GraphicsGetEvents(NodeParent):
+    def __init__(self):
+        pass
+class GraphicsCheckKey(NodeParent):
+    def __init__(self, KeyCode):
+        self.KeyCode = KeyCode
+class GraphicsGetMousePos(NodeParent):
+    def __init__(self):
+        pass
+class GraphicsIsRunning(NodeParent):
+    def __init__(self):
+        pass
+class GraphicsQuit(NodeParent):
+    def __init__(self):
+        pass
+class GraphicsClock(NodeParent):
+    def __init__(self, FPS=Integer(60)):
+        self.FPS = FPS
+class GraphicsLoadImage(NodeParent):
+    def __init__(self, FilePath):
+        self.FilePath = FilePath
+class GraphicsDrawImage(NodeParent):
+    def __init__(self, Image, X, Y, Width=ObjNONE(), Height=ObjNONE()):
+        self.Image = Image
+        self.X = X
+        self.Y = Y
+        self.Width = Width
+        self.Height = Height
+class GraphicsPlaySound(NodeParent):
+    def __init__(self, FilePath, Volume=Float(1.0)):
+        self.FilePath = FilePath
+        self.Volume = Volume
+
+class GraphicsWindowClosed(NodeParent):
+    def __init__(self):
+        pass
 
 primitive = (str, int, float, list, bool, dict, tuple)
 class Evaluate():
@@ -2750,6 +2944,630 @@ class Evaluate():
             iterable = self.evaluate(node.Iterable, context)
             start = self.evaluate(node.Start, context)
             return list(enumerate(iterable, start))
+        elif isinstance(node, SetAssignment):
+            return set(self.evaluate(elem, context) for elem in node.Elements)        
+        elif isinstance(node, SetOperations):
+            set1 = self.evaluate(node.Set1, context)
+            set2 = self.evaluate(node.Set2, context)
+            
+            if not isinstance(set1, set) or not isinstance(set2, set):
+                raise TypeError("SetOperations requires set arguments")
+            
+            if node.Operation == 'union':
+                return set1.union(set2)
+            elif node.Operation == 'intersection':
+                return set1.intersection(set2)
+            elif node.Operation == 'difference':
+                return set1.difference(set2)
+            elif node.Operation == 'symmetric_difference':
+                return set1.symmetric_difference(set2)
+            else:
+                raise ValueError(f"Unknown set operation: {node.Operation}") 
+        elif isinstance(node, SetMethods):
+            set_var = self.evaluate(node.SetVar, context)
+            if not isinstance(set_var, set):
+                raise TypeError("SetMethods requires a set")
+            
+            if node.Method == 'add':
+                element = self.evaluate(node.Element, context)
+                set_var.add(element)
+                return set_var
+            elif node.Method == 'remove':
+                element = self.evaluate(node.Element, context)
+                set_var.remove(element)
+                return set_var
+            elif node.Method == 'discard':
+                element = self.evaluate(node.Element, context)
+                set_var.discard(element)
+                return set_var
+            elif node.Method == 'clear':
+                set_var.clear()
+                return set_var
+            elif node.Method == 'copy':
+                return set_var.copy()
+            else:
+                raise ValueError(f"Unknown set method: {node.Method}")
+        elif isinstance(node, SetContains):
+            set_val = self.evaluate(node.Set, context)
+            element = self.evaluate(node.Element, context)
+            return element in set_val
+        elif isinstance(node, DateTime):
+            from datetime import datetime
+            
+            year = self.evaluate(node.Year, context) if not isinstance(node.Year, ObjNONE) else datetime.now().year
+            month = self.evaluate(node.Month, context) if not isinstance(node.Month, ObjNONE) else datetime.now().month
+            day = self.evaluate(node.Day, context) if not isinstance(node.Day, ObjNONE) else datetime.now().day
+            hour = self.evaluate(node.Hour, context)
+            minute = self.evaluate(node.Minute, context)
+            second = self.evaluate(node.Second, context)
+            
+            return datetime(year, month, day, hour, minute, second)
+        elif isinstance(node, DateTimeNow):
+            from datetime import datetime
+            return datetime.now()
+        elif isinstance(node, DateTimeFormat):
+            from datetime import datetime
+            dt = self.evaluate(node.DateTime, context)
+            format_str = self.evaluate(node.Format, context)
+            if not isinstance(dt, datetime):
+                raise TypeError("DateTimeFormat requires a datetime object")
+            
+            return dt.strftime(format_str)
+        elif isinstance(node, DateTimeParse):
+            from datetime import datetime
+            date_string = self.evaluate(node.DateString, context)
+            format_str = self.evaluate(node.Format, context)
+            
+            try:
+                return datetime.strptime(date_string, format_str)
+            except ValueError as e:
+                raise ValueError(f"Error parsing date '{date_string}': {str(e)}")
+        elif isinstance(node, TimeDelta):
+            from datetime import timedelta
+            days = self.evaluate(node.Days, context)
+            hours = self.evaluate(node.Hours, context)
+            minutes = self.evaluate(node.Minutes, context)
+            seconds = self.evaluate(node.Seconds, context)
+
+            return timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
+        elif isinstance(node, DateTimeAdd):
+            dt = self.evaluate(node.DateTime, context)
+            td = self.evaluate(node.TimeDelta, context)
+            
+            from datetime import datetime, timedelta
+            if not isinstance(dt, datetime) or not isinstance(td, timedelta):
+                raise TypeError("DateTimeAdd requires datetime and timedelta objects")
+            
+            return dt + td
+        elif isinstance(node, DateTimeSubtract):
+            dt1 = self.evaluate(node.DateTime1, context)
+            dt2 = self.evaluate(node.DateTime2, context)
+            
+            from datetime import datetime
+            if not isinstance(dt1, datetime) or not isinstance(dt2, datetime):
+                raise TypeError("DateTimeSubtract requires datetime objects")
+            
+            return dt1 - dt2
+        elif isinstance(node, DateTimeCompare):
+            dt1 = self.evaluate(node.DateTime1, context)
+            dt2 = self.evaluate(node.DateTime2, context)
+            operation = node.Operation
+            from datetime import datetime
+            if not isinstance(dt1, datetime) or not isinstance(dt2, datetime):
+                raise TypeError("DateTimeCompare requires datetime objects")
+            
+            if operation == 'before':
+                return dt1 < dt2
+            elif operation == 'after':
+                return dt1 > dt2
+            elif operation == 'equal':
+                return dt1 == dt2
+            else:
+                raise ValueError(f"Unknown comparison operation: {operation}")
+        elif isinstance(node, Statistics):
+            data = self.evaluate(node.Data, context)
+            operation = node.Operation
+            
+            if not isinstance(data, list) or not all(isinstance(x, (int, float)) for x in data):
+                raise TypeError("Statistics requires a list of numbers")
+            
+            if not data:
+                raise ValueError("Statistics requires non-empty data")
+            
+            if operation == 'variance':
+                mean = sum(data) / len(data)
+                return sum((x - mean) ** 2 for x in data) / len(data)
+            elif operation == 'stdev':
+                mean = sum(data) / len(data)
+                variance = sum((x - mean) ** 2 for x in data) / len(data)
+                return variance ** 0.5
+            elif operation == 'correlation':
+                if len(data) != 2 or not isinstance(data[0], list) or not isinstance(data[1], list):
+                    raise ValueError("Correlation requires two lists of data")
+                x_data, y_data = data
+                if len(x_data) != len(y_data):
+                    raise ValueError("Correlation requires equal length data sets")
+                
+                n = len(x_data)
+                mean_x = sum(x_data) / n
+                mean_y = sum(y_data) / n
+                
+                numerator = sum((x_data[i] - mean_x) * (y_data[i] - mean_y) for i in range(n))
+                denominator_x = sum((x - mean_x) ** 2 for x in x_data) ** 0.5
+                denominator_y = sum((y - mean_y) ** 2 for y in y_data) ** 0.5
+                
+                if denominator_x == 0 or denominator_y == 0:
+                    return 0
+                
+                return numerator / (denominator_x * denominator_y)
+            else:
+                raise ValueError(f"Unknown statistics operation: {operation}")
+        elif isinstance(node, Matrix):
+            rows = self.evaluate(node.Rows, context)
+            if not isinstance(rows, list) or not all(isinstance(row, list) for row in rows):
+                raise TypeError("Matrix requires a list of lists")
+            return rows
+        elif isinstance(node, LinearAlgebra):
+            matrix1 = self.evaluate(node.Matrix1, context)
+            matrix2 = self.evaluate(node.Matrix2, context) if not isinstance(node.Matrix2, ObjNONE) else None
+            operation = self.evaluate(node.Operation, context)
+            
+            if operation == 'transpose':
+                if not isinstance(matrix1, list) or not all(isinstance(row, list) for row in matrix1):
+                    raise TypeError("Transpose requires a matrix (list of lists)")
+                return [[matrix1[j][i] for j in range(len(matrix1))] for i in range(len(matrix1[0]))]
+            
+            elif operation == 'multiply':
+                if matrix2 is None:
+                    raise ValueError("Matrix multiplication requires two matrices")
+                
+                # Matrix multiplication
+                if len(matrix1[0]) != len(matrix2):
+                    raise ValueError("Matrix dimensions incompatible for multiplication")
+                
+                result = []
+                for i in range(len(matrix1)):
+                    row = []
+                    for j in range(len(matrix2[0])):
+                        sum_val = 0
+                        for k in range(len(matrix2)):
+                            sum_val += matrix1[i][k] * matrix2[k][j]
+                        row.append(sum_val)
+                    result.append(row)
+                return result
+            
+            elif operation == 'determinant':
+                if len(matrix1) != len(matrix1[0]):
+                    raise ValueError("Determinant requires a square matrix")
+                
+                def det(matrix):
+                    if len(matrix) == 1:
+                        return matrix[0][0]
+                    if len(matrix) == 2:
+                        return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]
+                    
+                    result = 0
+                    for i in range(len(matrix)):
+                        minor = [row[:i] + row[i+1:] for row in matrix[1:]]
+                        result += ((-1) ** i) * matrix[0][i] * det(minor)
+                    return result
+                
+                return det(matrix1)
+            
+            else:
+                raise ValueError(f"Unknown linear algebra operation: {operation}")
+        elif isinstance(node, Percentile):
+            data = self.evaluate(node.Data, context)
+            percentage = self.evaluate(node.Percentage, context)
+            
+            if not isinstance(data, list) or not all(isinstance(x, (int, float)) for x in data):
+                raise TypeError("Percentile requires a list of numbers")
+            
+            sorted_data = sorted(data)
+            k = (len(sorted_data) - 1) * (percentage / 100)
+            f = math.floor(k)
+            c = math.ceil(k)
+            
+            if f == c:
+                return sorted_data[int(k)]
+            
+            return sorted_data[int(f)] * (c - k) + sorted_data[int(c)] * (k - f)
+        elif isinstance(node, Assert):
+            condition = self.evaluate(node.Condition, context)
+            message = self.evaluate(node.Message, context)
+            
+            if not condition:
+                raise AssertionError(message)
+            return True
+        elif isinstance(node, WarningRaise):
+            import warnings
+            message = self.evaluate(node.Message, context)
+            category = self.evaluate(node.Category, context)
+            
+            if category == 'UserWarning':
+                warnings.warn(message, UserWarning)
+            elif category == 'DeprecationWarning':
+                warnings.warn(message, DeprecationWarning)
+            elif category == 'RuntimeWarning':
+                warnings.warn(message, RuntimeWarning)
+            else:
+                warnings.warn(message)
+            
+            return None
+        elif isinstance(node, CustomError):
+            name = self.evaluate(node.Name, context)
+            base_error = self.evaluate(node.BaseError, context)
+            base_class = eval(base_error) if isinstance(base_error, str) else Exception
+            
+            custom_exception = type(name, (base_class,), {})
+            context[name] = custom_exception
+            
+            return f"Custom error '{name}' created"
+        elif isinstance(node, ImportGraphicsState):
+            try:
+                import pygame
+                
+                width = self.evaluate(node.Width, context)
+                height = self.evaluate(node.Height, context)
+                title = self.evaluate(node.Title, context)
+                pygame.init()
+                pygame.mixer.init()
+                screen = pygame.display.set_mode((width, height))
+                pygame.display.set_caption(title)
+                clock = pygame.time.Clock()
+                context['__graphics_screen__'] = screen
+                context['__graphics_clock__'] = clock
+                context['__graphics_running__'] = True
+                context['__graphics_events__'] = []
+                context['__graphics_keys__'] = pygame.key.get_pressed()
+                context['__graphics_images__'] = {}
+                context['__graphics_sounds__'] = {}
+                screen.fill((0, 0, 0))
+                pygame.display.flip()
+                
+                print(f"Graphics initialized: {width}x{height} - '{title}'")
+                return "Graphics state imported successfully"
+                
+            except ImportError:
+                import tkinter as tk
+                width = self.evaluate(node.Width, context)
+                height = self.evaluate(node.Height, context)
+                title = self.evaluate(node.Title, context)
+                fallback_window = tk.Toplevel()
+                fallback_window.title(f"{title} - Graphics Emulator Error")
+                fallback_window.geometry(f"{width}x{height}")
+                fallback_window.configure(bg='black')
+                fallback_window.resizable(False, False)
+
+                fallback_window.update_idletasks()
+                x = (fallback_window.winfo_screenwidth() // 2) - (width // 2)
+                y = (fallback_window.winfo_screenheight() // 2) - (height // 2)
+                fallback_window.geometry(f"{width}x{height}+{x}+{y}")
+                
+                error_frame = tk.Frame(fallback_window, bg='black')
+                error_frame.pack(expand=True, fill='both')
+                
+                error_label = tk.Label(
+                    error_frame,
+                    text="UNABLE TO BOOT GRAPHICS EMULATOR\nMISSING GRAPHIC PACKAGE",
+                    font=('Consolas', 16, 'bold'),
+                    fg='white',
+                    bg='black',
+                    justify='center'
+                )
+                error_label.pack(expand=True)
+
+                context['__graphics_screen__'] = None
+                context['__graphics_fallback_window__'] = fallback_window
+                context['__graphics_running__'] = True
+                context['__graphics_fallback__'] = True
+                context['__graphics_events__'] = []
+                context['__graphics_keys__'] = {}
+
+                def on_fallback_close():
+                    context['__graphics_running__'] = False
+                    fallback_window.destroy()
+                
+                fallback_window.protocol("WM_DELETE_WINDOW", on_fallback_close)
+                
+                print(f"Graphics fallback initialized: {width}x{height} - '{title}' (Pygame not available)")
+                return "Graphics fallback state imported (Pygame not installed)"
+        elif isinstance(node, GraphicsSetBackground):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            if '__graphics_screen__' not in context:
+                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
+            
+            screen = context['__graphics_screen__']
+            color = self.evaluate(node.Color, context)
+            if isinstance(color, str):
+                color_map = {
+                    'black': (0, 0, 0), 'white': (255, 255, 255), 'red': (255, 0, 0),
+                    'green': (0, 255, 0), 'blue': (0, 0, 255), 'yellow': (255, 255, 0),
+                    'cyan': (0, 255, 255), 'magenta': (255, 0, 255), 'gray': (128, 128, 128)
+                }
+                color = color_map.get(color.lower(), (0, 0, 0))
+            elif isinstance(color, list) and len(color) >= 3:
+                color = tuple(color[:3])
+            
+            screen.fill(color)
+            return f"Background set to {color}"
+        elif isinstance(node, GraphicsDrawRect):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            if '__graphics_screen__' not in context:
+                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
+            
+            screen = context['__graphics_screen__']
+            x = self.evaluate(node.X, context)
+            y = self.evaluate(node.Y, context)
+            width = self.evaluate(node.Width, context)
+            height = self.evaluate(node.Height, context)
+            color = self.evaluate(node.Color, context)
+            filled = self.evaluate(node.Filled, context)
+
+            if isinstance(color, str):
+                color_map = {
+                    'black': (0, 0, 0), 'white': (255, 255, 255), 'red': (255, 0, 0),
+                    'green': (0, 255, 0), 'blue': (0, 0, 255), 'yellow': (255, 255, 0),
+                    'cyan': (0, 255, 255), 'magenta': (255, 0, 255), 'gray': (128, 128, 128)
+                }
+                color = color_map.get(color.lower(), (255, 255, 255))
+            elif isinstance(color, list):
+                color = tuple(color[:3])
+            
+            rect = pygame.Rect(x, y, width, height)
+            if filled:
+                pygame.draw.rect(screen, color, rect)
+            else:
+                pygame.draw.rect(screen, color, rect, 2)
+            
+            return f"Rectangle drawn at ({x}, {y})"
+        elif isinstance(node, GraphicsDrawCircle):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            if '__graphics_screen__' not in context:
+                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
+            
+            screen = context['__graphics_screen__']
+            x = self.evaluate(node.X, context)
+            y = self.evaluate(node.Y, context)
+            radius = self.evaluate(node.Radius, context)
+            color = self.evaluate(node.Color, context)
+            filled = self.evaluate(node.Filled, context)
+
+            if isinstance(color, str):
+                color_map = {
+                    'black': (0, 0, 0), 'white': (255, 255, 255), 'red': (255, 0, 0),
+                    'green': (0, 255, 0), 'blue': (0, 0, 255), 'yellow': (255, 255, 0),
+                    'cyan': (0, 255, 255), 'magenta': (255, 0, 255), 'gray': (128, 128, 128)
+                }
+                color = color_map.get(color.lower(), (255, 255, 255))
+            elif isinstance(color, list):
+                color = tuple(color[:3])
+            
+            if filled:
+                pygame.draw.circle(screen, color, (x, y), radius)
+            else:
+                pygame.draw.circle(screen, color, (x, y), radius, 2)
+            
+            return f"Circle drawn at ({x}, {y})"
+        elif isinstance(node, GraphicsDrawLine):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            if '__graphics_screen__' not in context:
+                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
+            
+            screen = context['__graphics_screen__']
+            start_x = self.evaluate(node.StartX, context)
+            start_y = self.evaluate(node.StartY, context)
+            end_x = self.evaluate(node.EndX, context)
+            end_y = self.evaluate(node.EndY, context)
+            color = self.evaluate(node.Color, context)
+            width = self.evaluate(node.Width, context)
+            
+            if isinstance(color, str):
+                color_map = {
+                    'black': (0, 0, 0), 'white': (255, 255, 255), 'red': (255, 0, 0),
+                    'green': (0, 255, 0), 'blue': (0, 0, 255), 'yellow': (255, 255, 0),
+                    'cyan': (0, 255, 255), 'magenta': (255, 0, 255), 'gray': (128, 128, 128)
+                }
+                color = color_map.get(color.lower(), (255, 255, 255))
+            elif isinstance(color, list):
+                color = tuple(color[:3])
+            
+            pygame.draw.line(screen, color, (start_x, start_y), (end_x, end_y), width)
+            return f"Line drawn from ({start_x}, {start_y}) to ({end_x}, {end_y})"
+        elif isinstance(node, GraphicsDrawText):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            if '__graphics_screen__' not in context:
+                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
+            
+            screen = context['__graphics_screen__']
+            text = self.evaluate(node.Text, context)
+            x = self.evaluate(node.X, context)
+            y = self.evaluate(node.Y, context)
+            color = self.evaluate(node.Color, context)
+            font_size = self.evaluate(node.FontSize, context)
+            font_name = self.evaluate(node.FontName, context)
+            
+            if isinstance(color, str):
+                color_map = {
+                    'black': (0, 0, 0), 'white': (255, 255, 255), 'red': (255, 0, 0),
+                    'green': (0, 255, 0), 'blue': (0, 0, 255), 'yellow': (255, 255, 0),
+                    'cyan': (0, 255, 255), 'magenta': (255, 0, 255), 'gray': (128, 128, 128)
+                }
+                color = color_map.get(color.lower(), (255, 255, 255))
+            elif isinstance(color, list):
+                color = tuple(color[:3])
+            
+            try:
+                font = pygame.font.Font(font_name, font_size)
+            except:
+                font = pygame.font.Font(None, font_size)
+            
+            text_surface = font.render(str(text), True, color)
+            screen.blit(text_surface, (x, y))
+            
+            return f"Text '{text}' drawn at ({x}, {y})"
+        elif isinstance(node, GraphicsUpdate):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            if '__graphics_screen__' not in context:
+                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
+            
+            pygame.display.flip()
+            
+            events = pygame.event.get()
+            context['__graphics_events__'] = events
+            context['__graphics_keys__'] = pygame.key.get_pressed()
+            
+            for event in events:
+                if event.type == pygame.QUIT:
+                    context['__graphics_running__'] = False
+                    print("Graphics window close requested")
+            
+            return "Graphics updated"
+        elif isinstance(node, GraphicsGetEvents):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            if '__graphics_screen__' not in context:
+                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
+            
+            return context.get('__graphics_events__', [])
+        elif isinstance(node, GraphicsCheckKey):
+            import pygame
+            if '__graphics_screen__' not in context:
+                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
+            
+            key_code = self.evaluate(node.KeyCode, context)
+            keys = context.get('__graphics_keys__', pygame.key.get_pressed())
+            
+            if isinstance(key_code, str):
+                key_map = {
+                    'space': pygame.K_SPACE, 'enter': pygame.K_RETURN, 'escape': pygame.K_ESCAPE,
+                    'up': pygame.K_UP, 'down': pygame.K_DOWN, 'left': pygame.K_LEFT, 'right': pygame.K_RIGHT,
+                    'a': pygame.K_a, 'b': pygame.K_b, 'c': pygame.K_c, 'd': pygame.K_d, 'e': pygame.K_e,
+                    'f': pygame.K_f, 'g': pygame.K_g, 'h': pygame.K_h, 'i': pygame.K_i, 'j': pygame.K_j,
+                    'k': pygame.K_k, 'l': pygame.K_l, 'm': pygame.K_m, 'n': pygame.K_n, 'o': pygame.K_o,
+                    'p': pygame.K_p, 'q': pygame.K_q, 'r': pygame.K_r, 's': pygame.K_s, 't': pygame.K_t,
+                    'u': pygame.K_u, 'v': pygame.K_v, 'w': pygame.K_w, 'x': pygame.K_x, 'y': pygame.K_y, 'z': pygame.K_z
+                }
+                key_code = key_map.get(key_code.lower(), key_code)
+            
+            # Use array indexing instead of .get() for ScancodeWrapper
+            try:
+                return bool(keys[key_code])
+            except (IndexError, KeyError):
+                return False
+        elif isinstance(node, GraphicsGetMousePos):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            if '__graphics_screen__' not in context:
+                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
+            
+            return list(pygame.mouse.get_pos())
+        elif isinstance(node, GraphicsIsRunning):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            return context.get('__graphics_running__', False)
+        elif isinstance(node, GraphicsQuit):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            if '__graphics_screen__' in context:
+                pygame.quit()
+                context['__graphics_running__'] = False
+                print("Graphics quit")
+            return "Graphics terminated"
+        elif isinstance(node, GraphicsClock):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            if '__graphics_clock__' not in context:
+                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
+            
+            fps = self.evaluate(node.FPS, context)
+            clock = context['__graphics_clock__']
+            clock.tick(fps)
+            return f"Clock ticked at {fps} FPS"
+        elif isinstance(node, GraphicsLoadImage):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            if '__graphics_screen__' not in context:
+                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
+            
+            filepath = self.evaluate(node.FilePath, context)
+            try:
+                image = pygame.image.load(filepath)
+                image_id = f"img_{len(context['__graphics_images__'])}"
+                context['__graphics_images__'][image_id] = image
+                return image_id
+            except pygame.error as e:
+                raise Exception(f"Could not load image '{filepath}': {str(e)}")
+        elif isinstance(node, GraphicsDrawImage):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            if '__graphics_screen__' not in context:
+                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
+            
+            screen = context['__graphics_screen__']
+            image_id = self.evaluate(node.Image, context)
+            x = self.evaluate(node.X, context)
+            y = self.evaluate(node.Y, context)
+            width = self.evaluate(node.Width, context) if not isinstance(node.Width, ObjNONE) else None
+            height = self.evaluate(node.Height, context) if not isinstance(node.Height, ObjNONE) else None
+            
+            if image_id not in context['__graphics_images__']:
+                raise ValueError(f"Image '{image_id}' not found. Load it first with GraphicsLoadImage.")
+            
+            image = context['__graphics_images__'][image_id]
+            
+            if width and height:
+                image = pygame.transform.scale(image, (width, height))
+            
+            screen.blit(image, (x, y))
+            return f"Image drawn at ({x}, {y})"
+        elif isinstance(node, GraphicsPlaySound):
+            try:
+                import pygame
+            except ImportError:
+                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
+            filepath = self.evaluate(node.FilePath, context)
+            volume = self.evaluate(node.Volume, context)
+            
+            try:
+                sound = pygame.mixer.Sound(filepath)
+                sound.set_volume(volume)
+                sound.play()
+                return f"Sound '{filepath}' played"
+            except pygame.error as e:
+                raise Exception(f"Could not play sound '{filepath}': {str(e)}")
         else:
             global runnable
             runnable = False
@@ -2907,4 +3725,3 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
-
