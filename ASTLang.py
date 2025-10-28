@@ -7,17 +7,15 @@ except ModuleNotFoundError:
     print('System exception ; ModuleNotFoundError ; Do you have Python installed correctly?')
     exit()
 
-try:
-    import pygame
-except:
-    print('Pygame was not detected. If you wish to use the graphics emulator, please install Pygame.')
-    print('Use pip install pygame')
 
 context: dict[str, object] = dict() # Initialize main register
 info = """
 DEFAULT MESSAGE FROM IDE:
 'NTMDev ...'
 Note from NTMDev: ASTLang 35 is now unsupported
+
+CURRENT MILESTONE: 4500 LINES
+ACHIEVED MILESTONE: 4000 LINES
 ----------------------------------------------------------------------------------------------------------------
 ASTLang for PC, Local based (IDE)
 Supports IDE usuage and file saving with .astlang
@@ -29,19 +27,18 @@ Created by NTMDev (2025)
 
 Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue
 
-Current Version Stored: ASTLang 37, Release 1 [BIG UPDATE]
+Current Version Stored: ASTLang 37, Pre-Release 5 [BETA]
 
 Currently Known Bugs:
 - No file updating permissions for file I/O commands, through ":[state] FilePath", "no update"
+- Cannot reopen a file after saving
 
-Functions (COMING SOON): Import()
+Functions (COMING SOON): TBD
 
 Adding: 
 - custom modules (coming ASTLang 40)
 
-Added: GRAPHICS EMULATOR SUPPORT ImportGraphicsState(), GraphicsSetBackground(), GraphicsDrawRect(), GraphicsDrawCircle(), GraphicsDrawLine(),
-GraphicsDrawText(), GraphicsUpdate(), GraphicsGetEvents(), GraphicsCheckKey(), GraphicsGetMousePos(), GraphicsIsRunning(), GraphicsQuit(),
-GraphicsClock(), GraphicsLoadImage(), GraphicsDrawImage(), GraphicsPlaySound()
+Added: InspectCode(), Debugger(), StackTrace(), DataStream(), StreamProcessor(), Pipeline()
 Updated: Live console output, including errors 
 ----------------------------------------------------------------------------------------------------------------
 """
@@ -1373,85 +1370,30 @@ class Regression(NodeParent):
         self.YData = YData
         self.Type = Type
 
-class ImportGraphicsState(NodeParent):
-    def __init__(self, Width=Integer(800), Height=Integer(600), Title=String('ASTLang Graphics')):
-        self.Width = Width
-        self.Height = Height
-        self.Title = Title
-class GraphicsSetBackground(NodeParent):
-    def __init__(self, Color):
-        self.Color = Color
-class GraphicsDrawRect(NodeParent):
-    def __init__(self, X, Y, Width, Height, Color, Filled=Boolean('True')):
-        self.X = X
-        self.Y = Y
-        self.Width = Width
-        self.Height = Height
-        self.Color = Color
-        self.Filled = Filled
-class GraphicsDrawCircle(NodeParent):
-    def __init__(self, X, Y, Radius, Color, Filled=Boolean('True')):
-        self.X = X
-        self.Y = Y
-        self.Radius = Radius
-        self.Color = Color
-        self.Filled = Filled
-class GraphicsDrawLine(NodeParent):
-    def __init__(self, StartX, StartY, EndX, EndY, Color, Width=Integer(1)):
-        self.StartX = StartX
-        self.StartY = StartY
-        self.EndX = EndX
-        self.EndY = EndY
-        self.Color = Color
-        self.Width = Width
-class GraphicsDrawText(NodeParent):
-    def __init__(self, Text, X, Y, Color=ListAssignment(Integer(255), Integer(255), Integer(255)), 
-                 FontSize=Integer(24), FontName=String('Arial')):
-        self.Text = Text
-        self.X = X
-        self.Y = Y
-        self.Color = Color
-        self.FontSize = FontSize
-        self.FontName = FontName
-class GraphicsUpdate(NodeParent):
-    def __init__(self):
-        pass
-class GraphicsGetEvents(NodeParent):
-    def __init__(self):
-        pass
-class GraphicsCheckKey(NodeParent):
-    def __init__(self, KeyCode):
-        self.KeyCode = KeyCode
-class GraphicsGetMousePos(NodeParent):
-    def __init__(self):
-        pass
-class GraphicsIsRunning(NodeParent):
-    def __init__(self):
-        pass
-class GraphicsQuit(NodeParent):
-    def __init__(self):
-        pass
-class GraphicsClock(NodeParent):
-    def __init__(self, FPS=Integer(60)):
-        self.FPS = FPS
-class GraphicsLoadImage(NodeParent):
-    def __init__(self, FilePath):
-        self.FilePath = FilePath
-class GraphicsDrawImage(NodeParent):
-    def __init__(self, Image, X, Y, Width=ObjNONE(), Height=ObjNONE()):
-        self.Image = Image
-        self.X = X
-        self.Y = Y
-        self.Width = Width
-        self.Height = Height
-class GraphicsPlaySound(NodeParent):
-    def __init__(self, FilePath, Volume=Float(1.0)):
-        self.FilePath = FilePath
-        self.Volume = Volume
+class InspectCode(NodeParent):
+    def __init__(self, Object, Property=String('type')):
+        self.Object = Object
+        self.Property = Property
+class Debugger(NodeParent):
+    def __init__(self, Code, Breakpoints=ListAssignment()):
+        self.Code = Code
+        self.Breakpoints = Breakpoints
+class StackTrace(NodeParent):
+    def __init__(self, Depth=Integer(10)):
+        self.Depth = Depth
 
-class GraphicsWindowClosed(NodeParent):
-    def __init__(self):
-        pass
+class DataStream(NodeParent):
+    def __init__(self, Source, BufferSize=Integer(1024)):
+        self.Source = Source
+        self.BufferSize = BufferSize
+class StreamProcessor(NodeParent):
+    def __init__(self, Stream, ProcessFunction, WindowSize=Integer(10)):
+        self.Stream = Stream
+        self.ProcessFunction = ProcessFunction
+        self.WindowSize = WindowSize
+class Pipeline(NodeParent):
+    def __init__(self, Stages):
+        self.Stages = Stages
 
 primitive = (str, int, float, list, bool, dict, tuple)
 class Evaluate():
@@ -1484,14 +1426,17 @@ class Evaluate():
             else: 
                 raise Exception("CastToValue requires a Variable node")
             value = self.evaluate(node.Var, context)
-            if node.CastVal == 'str': 
-                casted = str(value)
-            elif node.CastVal == 'int': 
-                casted = int(value)
-            elif node.CastVal == 'list': 
-                casted = list(value)
-            else: 
-                raise Exception(f"Unsupported cast: {node.CastVal}")
+            match node.CastVal:
+                case 'str':
+                    casted = str(value)
+                case 'int':
+                    casted = int(value)
+                case 'list':
+                    casted = list(value)
+                case 'tuple':
+                    casted = tuple(value)
+                case _: 
+                    raise Exception(f"Unsupported cast: {node.CastVal}")
             
             context[varname] = casted
             return casted
@@ -1624,13 +1569,13 @@ class Evaluate():
                 else:
                     print(value, end=end_val)
                 return None
-        elif isinstance(node, Len):
-                var = self.evaluate(node.Var, context)
-                return len(var)
-        elif isinstance(node, Max):
-                var = list(self.evaluate(node.Var, context))
-                return max(var)
-        elif isinstance(node, Min):
+            elif isinstance(node.Function, Len):
+                    var = self.evaluate(node.Var, context)
+                    return len(var)
+            elif isinstance(node.Function, Max):
+                    var = list(self.evaluate(node.Var, context))
+                    return max(var)
+            elif isinstance(node.Function, Min):
                 var = list(self.evaluate(node.Var, context))
                 return min(var)
         elif isinstance(node, Condition):
@@ -2872,13 +2817,18 @@ class Evaluate():
             args = self.evaluate(node.Args, context)
             kwargs = self.evaluate(node.Kwargs, context)
             
-            if func_name in context:
+            # Retrieve appropriate function name to be refreneced by intepreter
+            if callable(func_name):
+                func = func_name
+            elif isinstance(func_name, str) and func_name in context:
                 func = context[func_name]
-            else:
+            elif isinstance(func_name, str):
                 try:
                     func = eval(func_name, globals())
                 except:
                     raise NameError(f"Function '{func_name}' not found")
+            else:
+                raise NameError(f"Function '{func_name}' not found")
             
             if not callable(func):
                 raise TypeError(f"'{func_name}' is not callable")
@@ -3203,357 +3153,7 @@ class Evaluate():
             context[name] = custom_exception
             
             return f"Custom error '{name}' created"
-        elif isinstance(node, ImportGraphicsState):
-            try:
-                import pygame
-                
-                width = self.evaluate(node.Width, context)
-                height = self.evaluate(node.Height, context)
-                title = self.evaluate(node.Title, context)
-                pygame.init()
-                pygame.mixer.init()
-                screen = pygame.display.set_mode((width, height))
-                pygame.display.set_caption(title)
-                clock = pygame.time.Clock()
-                context['__graphics_screen__'] = screen
-                context['__graphics_clock__'] = clock
-                context['__graphics_running__'] = True
-                context['__graphics_events__'] = []
-                context['__graphics_keys__'] = pygame.key.get_pressed()
-                context['__graphics_images__'] = {}
-                context['__graphics_sounds__'] = {}
-                screen.fill((0, 0, 0))
-                pygame.display.flip()
-                
-                print(f"Graphics initialized: {width}x{height} - '{title}'")
-                return "Graphics state imported successfully"
-                
-            except ImportError:
-                import tkinter as tk
-                width = self.evaluate(node.Width, context)
-                height = self.evaluate(node.Height, context)
-                title = self.evaluate(node.Title, context)
-                fallback_window = tk.Toplevel()
-                fallback_window.title(f"{title} - Graphics Emulator Error")
-                fallback_window.geometry(f"{width}x{height}")
-                fallback_window.configure(bg='black')
-                fallback_window.resizable(False, False)
 
-                fallback_window.update_idletasks()
-                x = (fallback_window.winfo_screenwidth() // 2) - (width // 2)
-                y = (fallback_window.winfo_screenheight() // 2) - (height // 2)
-                fallback_window.geometry(f"{width}x{height}+{x}+{y}")
-                
-                error_frame = tk.Frame(fallback_window, bg='black')
-                error_frame.pack(expand=True, fill='both')
-                
-                error_label = tk.Label(
-                    error_frame,
-                    text="UNABLE TO BOOT GRAPHICS EMULATOR\nMISSING GRAPHIC PACKAGE",
-                    font=('Consolas', 16, 'bold'),
-                    fg='white',
-                    bg='black',
-                    justify='center'
-                )
-                error_label.pack(expand=True)
-
-                context['__graphics_screen__'] = None
-                context['__graphics_fallback_window__'] = fallback_window
-                context['__graphics_running__'] = True
-                context['__graphics_fallback__'] = True
-                context['__graphics_events__'] = []
-                context['__graphics_keys__'] = {}
-
-                def on_fallback_close():
-                    context['__graphics_running__'] = False
-                    fallback_window.destroy()
-                
-                fallback_window.protocol("WM_DELETE_WINDOW", on_fallback_close)
-                
-                print(f"Graphics fallback initialized: {width}x{height} - '{title}' (Pygame not available)")
-                return "Graphics fallback state imported (Pygame not installed)"
-        elif isinstance(node, GraphicsSetBackground):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            if '__graphics_screen__' not in context:
-                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
-            
-            screen = context['__graphics_screen__']
-            color = self.evaluate(node.Color, context)
-            if isinstance(color, str):
-                color_map = {
-                    'black': (0, 0, 0), 'white': (255, 255, 255), 'red': (255, 0, 0),
-                    'green': (0, 255, 0), 'blue': (0, 0, 255), 'yellow': (255, 255, 0),
-                    'cyan': (0, 255, 255), 'magenta': (255, 0, 255), 'gray': (128, 128, 128)
-                }
-                color = color_map.get(color.lower(), (0, 0, 0))
-            elif isinstance(color, list) and len(color) >= 3:
-                color = tuple(color[:3])
-            
-            screen.fill(color)
-            return f"Background set to {color}"
-        elif isinstance(node, GraphicsDrawRect):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            if '__graphics_screen__' not in context:
-                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
-            
-            screen = context['__graphics_screen__']
-            x = self.evaluate(node.X, context)
-            y = self.evaluate(node.Y, context)
-            width = self.evaluate(node.Width, context)
-            height = self.evaluate(node.Height, context)
-            color = self.evaluate(node.Color, context)
-            filled = self.evaluate(node.Filled, context)
-
-            if isinstance(color, str):
-                color_map = {
-                    'black': (0, 0, 0), 'white': (255, 255, 255), 'red': (255, 0, 0),
-                    'green': (0, 255, 0), 'blue': (0, 0, 255), 'yellow': (255, 255, 0),
-                    'cyan': (0, 255, 255), 'magenta': (255, 0, 255), 'gray': (128, 128, 128)
-                }
-                color = color_map.get(color.lower(), (255, 255, 255))
-            elif isinstance(color, list):
-                color = tuple(color[:3])
-            
-            rect = pygame.Rect(x, y, width, height)
-            if filled:
-                pygame.draw.rect(screen, color, rect)
-            else:
-                pygame.draw.rect(screen, color, rect, 2)
-            
-            return f"Rectangle drawn at ({x}, {y})"
-        elif isinstance(node, GraphicsDrawCircle):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            if '__graphics_screen__' not in context:
-                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
-            
-            screen = context['__graphics_screen__']
-            x = self.evaluate(node.X, context)
-            y = self.evaluate(node.Y, context)
-            radius = self.evaluate(node.Radius, context)
-            color = self.evaluate(node.Color, context)
-            filled = self.evaluate(node.Filled, context)
-
-            if isinstance(color, str):
-                color_map = {
-                    'black': (0, 0, 0), 'white': (255, 255, 255), 'red': (255, 0, 0),
-                    'green': (0, 255, 0), 'blue': (0, 0, 255), 'yellow': (255, 255, 0),
-                    'cyan': (0, 255, 255), 'magenta': (255, 0, 255), 'gray': (128, 128, 128)
-                }
-                color = color_map.get(color.lower(), (255, 255, 255))
-            elif isinstance(color, list):
-                color = tuple(color[:3])
-            
-            if filled:
-                pygame.draw.circle(screen, color, (x, y), radius)
-            else:
-                pygame.draw.circle(screen, color, (x, y), radius, 2)
-            
-            return f"Circle drawn at ({x}, {y})"
-        elif isinstance(node, GraphicsDrawLine):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            if '__graphics_screen__' not in context:
-                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
-            
-            screen = context['__graphics_screen__']
-            start_x = self.evaluate(node.StartX, context)
-            start_y = self.evaluate(node.StartY, context)
-            end_x = self.evaluate(node.EndX, context)
-            end_y = self.evaluate(node.EndY, context)
-            color = self.evaluate(node.Color, context)
-            width = self.evaluate(node.Width, context)
-            
-            if isinstance(color, str):
-                color_map = {
-                    'black': (0, 0, 0), 'white': (255, 255, 255), 'red': (255, 0, 0),
-                    'green': (0, 255, 0), 'blue': (0, 0, 255), 'yellow': (255, 255, 0),
-                    'cyan': (0, 255, 255), 'magenta': (255, 0, 255), 'gray': (128, 128, 128)
-                }
-                color = color_map.get(color.lower(), (255, 255, 255))
-            elif isinstance(color, list):
-                color = tuple(color[:3])
-            
-            pygame.draw.line(screen, color, (start_x, start_y), (end_x, end_y), width)
-            return f"Line drawn from ({start_x}, {start_y}) to ({end_x}, {end_y})"
-        elif isinstance(node, GraphicsDrawText):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            if '__graphics_screen__' not in context:
-                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
-            
-            screen = context['__graphics_screen__']
-            text = self.evaluate(node.Text, context)
-            x = self.evaluate(node.X, context)
-            y = self.evaluate(node.Y, context)
-            color = self.evaluate(node.Color, context)
-            font_size = self.evaluate(node.FontSize, context)
-            font_name = self.evaluate(node.FontName, context)
-            
-            if isinstance(color, str):
-                color_map = {
-                    'black': (0, 0, 0), 'white': (255, 255, 255), 'red': (255, 0, 0),
-                    'green': (0, 255, 0), 'blue': (0, 0, 255), 'yellow': (255, 255, 0),
-                    'cyan': (0, 255, 255), 'magenta': (255, 0, 255), 'gray': (128, 128, 128)
-                }
-                color = color_map.get(color.lower(), (255, 255, 255))
-            elif isinstance(color, list):
-                color = tuple(color[:3])
-            
-            try:
-                font = pygame.font.Font(font_name, font_size)
-            except:
-                font = pygame.font.Font(None, font_size)
-            
-            text_surface = font.render(str(text), True, color)
-            screen.blit(text_surface, (x, y))
-            
-            return f"Text '{text}' drawn at ({x}, {y})"
-        elif isinstance(node, GraphicsUpdate):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            if '__graphics_screen__' not in context:
-                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
-            
-            pygame.display.flip()
-            
-            events = pygame.event.get()
-            context['__graphics_events__'] = events
-            context['__graphics_keys__'] = pygame.key.get_pressed()
-            
-            for event in events:
-                if event.type == pygame.QUIT:
-                    context['__graphics_running__'] = False
-                    print("Graphics window close requested")
-            
-            return "Graphics updated"
-        elif isinstance(node, GraphicsGetEvents):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            if '__graphics_screen__' not in context:
-                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
-            
-            return context.get('__graphics_events__', [])
-        elif isinstance(node, GraphicsCheckKey):
-            import pygame
-            if '__graphics_screen__' not in context:
-                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
-            
-            key_code = self.evaluate(node.KeyCode, context)
-            keys = context.get('__graphics_keys__', pygame.key.get_pressed())
-            
-            if isinstance(key_code, str):
-                key_map = {
-                    'space': pygame.K_SPACE, 'enter': pygame.K_RETURN, 'escape': pygame.K_ESCAPE,
-                    'up': pygame.K_UP, 'down': pygame.K_DOWN, 'left': pygame.K_LEFT, 'right': pygame.K_RIGHT,
-                    'a': pygame.K_a, 'b': pygame.K_b, 'c': pygame.K_c, 'd': pygame.K_d, 'e': pygame.K_e,
-                    'f': pygame.K_f, 'g': pygame.K_g, 'h': pygame.K_h, 'i': pygame.K_i, 'j': pygame.K_j,
-                    'k': pygame.K_k, 'l': pygame.K_l, 'm': pygame.K_m, 'n': pygame.K_n, 'o': pygame.K_o,
-                    'p': pygame.K_p, 'q': pygame.K_q, 'r': pygame.K_r, 's': pygame.K_s, 't': pygame.K_t,
-                    'u': pygame.K_u, 'v': pygame.K_v, 'w': pygame.K_w, 'x': pygame.K_x, 'y': pygame.K_y, 'z': pygame.K_z
-                }
-                key_code = key_map.get(key_code.lower(), key_code)
-            
-            # Use array indexing instead of .get() for ScancodeWrapper
-            try:
-                return bool(keys[key_code])
-            except (IndexError, KeyError):
-                return False
-        elif isinstance(node, GraphicsGetMousePos):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            if '__graphics_screen__' not in context:
-                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
-            
-            return list(pygame.mouse.get_pos())
-        elif isinstance(node, GraphicsIsRunning):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            return context.get('__graphics_running__', False)
-        elif isinstance(node, GraphicsQuit):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            if '__graphics_screen__' in context:
-                pygame.quit()
-                context['__graphics_running__'] = False
-                print("Graphics quit")
-            return "Graphics terminated"
-        elif isinstance(node, GraphicsClock):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            if '__graphics_clock__' not in context:
-                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
-            
-            fps = self.evaluate(node.FPS, context)
-            clock = context['__graphics_clock__']
-            clock.tick(fps)
-            return f"Clock ticked at {fps} FPS"
-        elif isinstance(node, GraphicsLoadImage):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            if '__graphics_screen__' not in context:
-                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
-            
-            filepath = self.evaluate(node.FilePath, context)
-            try:
-                image = pygame.image.load(filepath)
-                image_id = f"img_{len(context['__graphics_images__'])}"
-                context['__graphics_images__'][image_id] = image
-                return image_id
-            except pygame.error as e:
-                raise Exception(f"Could not load image '{filepath}': {str(e)}")
-        elif isinstance(node, GraphicsDrawImage):
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            if '__graphics_screen__' not in context:
-                raise RuntimeError("Graphics not initialized. Call ImportGraphicsState() first.")
-            
-            screen = context['__graphics_screen__']
-            image_id = self.evaluate(node.Image, context)
-            x = self.evaluate(node.X, context)
-            y = self.evaluate(node.Y, context)
-            width = self.evaluate(node.Width, context) if not isinstance(node.Width, ObjNONE) else None
-            height = self.evaluate(node.Height, context) if not isinstance(node.Height, ObjNONE) else None
-            
-            if image_id not in context['__graphics_images__']:
-                raise ValueError(f"Image '{image_id}' not found. Load it first with GraphicsLoadImage.")
-            
-            image = context['__graphics_images__'][image_id]
-            
-            if width and height:
-                image = pygame.transform.scale(image, (width, height))
-            
-            screen.blit(image, (x, y))
-            return f"Image drawn at ({x}, {y})"
-        elif isinstance(node, GraphicsPlaySound):
             try:
                 import pygame
             except ImportError:
@@ -3568,13 +3168,351 @@ class Evaluate():
                 return f"Sound '{filepath}' played"
             except pygame.error as e:
                 raise Exception(f"Could not play sound '{filepath}': {str(e)}")
+        elif isinstance(node, InspectCode):
+            import sys
+            obj = self.evaluate(node.Object, context)
+            property_name = self.evaluate(node.Property, context)
+            
+            if property_name == 'type':
+                return type(obj).__name__
+            elif property_name == 'methods':
+                if hasattr(obj, '__dict__'):
+                    methods = [attr for attr in dir(obj) if callable(getattr(obj, attr, None))]
+                    return methods
+                elif isinstance(obj, dict) and obj.get('type') == 'class':
+                    return list(obj.get('methods', {}).keys())
+                else:
+                    return [attr for attr in dir(obj) if callable(getattr(obj, attr, None))]
+            elif property_name == 'attributes':
+                if hasattr(obj, '__dict__'):
+                    return list(obj.__dict__.keys())
+                elif isinstance(obj, dict):
+                    return list(obj.keys())
+                else:
+                    return [attr for attr in dir(obj) if not callable(getattr(obj, attr, None))]
+            elif property_name == 'source':
+                import inspect
+                try:
+                    if callable(obj):
+                        return inspect.getsource(obj)
+                    else:
+                        return f"Source not available for {type(obj).__name__}"
+                except:
+                    return "Source code not available"
+            elif property_name == 'size':
+                import sys
+                return sys.getsizeof(obj)
+            elif property_name == 'module':
+                return getattr(obj, '__module__', 'unknown')
+            elif property_name == 'doc':
+                return getattr(obj, '__doc__', 'No documentation available')
+            elif property_name == 'all':
+                result = {
+                    'type': type(obj).__name__,
+                    'size': sys.getsizeof(obj),
+                    'module': getattr(obj, '__module__', 'unknown'),
+                    'doc': getattr(obj, '__doc__', 'No documentation')
+                }
+                if hasattr(obj, '__dict__'):
+                    result['attributes'] = list(obj.__dict__.keys())
+                    result['methods'] = [attr for attr in dir(obj) if callable(getattr(obj, attr, None))]
+                return result
+            else:
+                raise ValueError(f"Unknown property: {property_name}")
+        elif isinstance(node, Debugger):
+            code = self.evaluate(node.Code, context)
+            breakpoints = self.evaluate(node.Breakpoints, context)
+            
+            print(f"DEBUG MODE: Starting execution with {len(breakpoints)} breakpoints")
+
+            debug_info = {
+                'breakpoints': breakpoints,
+                'current_line': 0,
+                'variables': {},
+                'call_stack': []
+            }
+            context['__debug_info__'] = debug_info
+            
+            def debug_evaluate(node, ctx, line_num=0):
+                debug_info['current_line'] = line_num
+                debug_info['variables'] = {k: v for k, v in ctx.items() if not k.startswith('__')}
+
+                if line_num in breakpoints:
+                    print(f"\nBREAKPOINT HIT at line {line_num}")
+                    print(f"Current variables: {debug_info['variables']}")
+                    print(f"Call stack depth: {len(debug_info['call_stack'])}")
+                    while True:
+                        cmd = input("Debug> (c)ontinue, (s)tep, (v)ariables, (st)ack, (q)uit: ").strip().lower()
+                        if cmd in ['c', 'continue']:
+                            break
+                        elif cmd in ['s', 'step']:
+                            break
+                        elif cmd in ['v', 'variables']:
+                            for var, val in debug_info['variables'].items():
+                                print(f"  {var} = {val}")
+                        elif cmd in ['st', 'stack']:
+                            print(f"Call stack: {debug_info['call_stack']}")
+                        elif cmd in ['q', 'quit']:
+                            raise KeyboardInterrupt("Debug session terminated")
+                        else:
+                            print("Unknown command. Use c, s, v, st, or q")
+                
+                return self.evaluate(node, ctx)
+            
+            try:
+                if hasattr(code, 'ModuleCode'):
+                    for i, stmt in enumerate(code.ModuleCode):
+                        debug_info['call_stack'].append(f"Line {i+1}: {type(stmt).__name__}")
+                        result = debug_evaluate(stmt, context, i+1)
+                        debug_info['call_stack'].pop()
+                else:
+                    result = debug_evaluate(code, context, 1)
+                
+                print("🏁 DEBUG MODE: Execution completed successfully")
+                return result
+                
+            except Exception as e:
+                print(f"DEBUG MODE: Exception at line {debug_info['current_line']}: {e}")
+                print(f"Variables at crash: {debug_info['variables']}")
+                raise
+        elif isinstance(node, StackTrace):
+            import inspect
+            depth = self.evaluate(node.Depth, context)
+            stack = inspect.stack()
+            
+            trace_info = []
+            for i, frame in enumerate(stack[1:depth+1]):
+                trace_info.append({
+                    'frame': i+1,
+                    'filename': frame.filename,
+                    'function': frame.function,
+                    'line': frame.lineno,
+                    'code': frame.code_context[0].strip() if frame.code_context else 'N/A'
+                })
+            
+            print("STACK TRACE:")
+            for trace in trace_info:
+                print(f"  Frame {trace['frame']}: {trace['function']}() in {trace['filename']}:{trace['line']}")
+                print(f"    Code: {trace['code']}")
+            
+            return trace_info
+        elif isinstance(node, DataStream):
+            source = self.evaluate(node.Source, context)
+            buffer_size = self.evaluate(node.BufferSize, context)
+            
+            class StreamIterator:
+                def __init__(self, data, buffer_size):
+                    self.data = data
+                    self.buffer_size = buffer_size
+                    self.position = 0
+                
+                def __iter__(self):
+                    return self
+                
+                def __next__(self):
+                    if isinstance(self.data, str):
+                        if self.position >= len(self.data):
+                            raise StopIteration
+                        chunk = self.data[self.position:self.position + self.buffer_size]
+                        self.position += self.buffer_size
+                        return chunk
+                    elif isinstance(self.data, list):
+                        if self.position >= len(self.data):
+                            raise StopIteration
+                        chunk = self.data[self.position:self.position + self.buffer_size]
+                        self.position += self.buffer_size
+                        return chunk
+                    elif hasattr(self.data, 'read'):  # File-like object
+                        chunk = self.data.read(self.buffer_size)
+                        if not chunk:
+                            raise StopIteration
+                        return chunk
+                    else:
+                        raise TypeError(f"Unsupported stream source type: {type(self.data)}")
+                
+                def reset(self):
+                    self.position = 0
+                
+                def get_stats(self):
+                    if isinstance(self.data, (str, list)):
+                        total_size = len(self.data)
+                        chunks_processed = self.position // self.buffer_size
+                        progress = (self.position / total_size) * 100 if total_size > 0 else 100
+                        return {
+                            'total_size': total_size,
+                            'position': self.position,
+                            'chunks_processed': chunks_processed,
+                            'progress_percent': progress,
+                            'buffer_size': self.buffer_size
+                        }
+                    else:
+                        return {
+                            'position': self.position,
+                            'chunks_processed': self.position // self.buffer_size,
+                            'buffer_size': self.buffer_size
+                        }
+            
+            stream = StreamIterator(source, buffer_size)
+            stream_id = f"stream_{len([k for k in context.keys() if k.startswith('stream_')])}"
+            context[stream_id] = stream
+            
+            return stream
+        elif isinstance(node, StreamProcessor):
+            stream = self.evaluate(node.Stream, context)
+            process_function = self.evaluate(node.ProcessFunction, context)
+            window_size = self.evaluate(node.WindowSize, context)
+            
+            if not hasattr(stream, '__iter__'):
+                raise TypeError("StreamProcessor requires an iterable stream")
+            
+            results = []
+            window = []
+            
+            for chunk in stream:
+                if isinstance(chunk, list):
+                    window.extend(chunk)
+                else:
+                    window.append(chunk)
+                
+                if len(window) >= window_size:
+                    current_window = window[:window_size]
+                    
+                    if isinstance(process_function, str):
+                        if process_function == 'sum':
+                            processed = sum(current_window)
+                        elif process_function == 'avg':
+                            if all(isinstance(x, (int, float)) for x in current_window):
+                                processed = sum(current_window) / len(current_window)
+                            else:
+                                raise TypeError("Average requires numeric values")
+                        elif process_function == 'max':
+                            processed = max(current_window)
+                        elif process_function == 'min':
+                            processed = min(current_window)
+                        elif process_function == 'count':
+                            processed = len(current_window)
+                        else:
+                            func_def = context.get(process_function)
+                            if isinstance(func_def, DefineFunction):
+                                local_context = context.copy()
+                                if len(func_def.Param) != 1:
+                                    raise ValueError("Stream processing function must take 1 parameter")
+                                local_context[func_def.Param[0]] = current_window
+                                
+                                func_result = None
+                                for stmt in func_def.Body:
+                                    func_result = self.evaluate(stmt, local_context)
+                                    if isinstance(stmt, Return):
+                                        break
+                                processed = func_result
+                            else:
+                                raise NameError(f"Function '{process_function}' not found")
+                    elif callable(process_function):
+                        processed = process_function(current_window)
+                    else:
+                        processed = current_window
+                    
+                    results.append(processed)
+                
+                    window = window[1:]
+            if window:
+                if isinstance(process_function, str):
+                    if process_function == 'sum':
+                        processed = sum(window)
+                    elif process_function == 'avg':
+                        if all(isinstance(x, (int, float)) for x in window):
+                            processed = sum(window) / len(window)
+                        else:
+                            raise TypeError("Average requires numeric values")
+                    elif process_function == 'max':
+                        processed = max(window)
+                    elif process_function == 'min':
+                        processed = min(window)
+                    elif process_function == 'count':
+                        processed = len(window)
+                    else:
+                        func_def = context.get(process_function)
+                        if isinstance(func_def, DefineFunction):
+                            local_context = context.copy()
+                            if len(func_def.Param) != 1:
+                                raise ValueError("Stream processing function must take 1 parameter")
+                            local_context[func_def.Param[0]] = window
+                            
+                            func_result = None
+                            for stmt in func_def.Body:
+                                func_result = self.evaluate(stmt, local_context)
+                                if isinstance(stmt, Return):
+                                    break
+                            processed = func_result
+                        else:
+                            processed = window
+                elif callable(process_function):
+                    processed = process_function(window)
+                else:
+                    processed = window
+                results.append(processed)
+            
+            return results
+        elif isinstance(node, Pipeline):
+            stages = self.evaluate(node.Stages, context)
+            
+            if not isinstance(stages, list):
+                raise TypeError("Pipeline stages must be a list")
+            
+            def create_pipeline(*args):
+                data = args[0] if args else None
+                
+                for i, stage in enumerate(stages):
+                    try:
+                        if callable(stage):
+                            data = stage(data)
+                        elif isinstance(stage, str):
+                            # Handle ASTLang function names
+                            func_def = context.get(stage)
+                            if isinstance(func_def, DefineFunction):
+                                local_context = context.copy()
+                                if len(func_def.Param) != 1:
+                                    raise ValueError(f"Pipeline stage {i+1} function must take 1 parameter")
+                                local_context[func_def.Param[0]] = data
+                                
+                                func_result = None
+                                for stmt in func_def.Body:
+                                    func_result = self.evaluate(stmt, local_context)
+                                    if isinstance(stmt, Return):
+                                        break
+                                data = func_result
+                            else:
+                                raise NameError(f"Pipeline stage {i+1}: Function '{stage}' not found")
+                        else:
+                            # Handle built-in transformations
+                            if hasattr(stage, 'evaluate'):
+                                data = self.evaluate(stage, context)
+                            else:
+                                raise TypeError(f"Pipeline stage {i+1}: Invalid stage type {type(stage)}")
+                    
+                    except Exception as e:
+                        raise Exception(f"Pipeline failed at stage {i+1}: {str(e)}")
+                
+                return data
+            
+            return create_pipeline
         else:
-            global runnable
-            runnable = False
-            raise TypeError(f"{type(node)}")
+            if node is None:
+                print("[WARNING]: Evaluated node is NoneType")
+                return None
+            elif isinstance(node, (str, int, float, bool, list, dict, tuple)):
+                return node
+            else:
+                global runnable
+                runnable = False
+                print(f"[ERROR]: Unsupported node type: {type(node)}")
+                print(f"[ERROR]: Node value: {node}")
+                print(f"[ERROR]: Node repr: {repr(node)}")
+                raise TypeError(f"Unsupported AST node type: {type(node)}")
 
 E = Evaluate()
 def show_result(output_queue=None, qw=100):
+    global entry
     root2 = tk.Tk()
     root2.title('ASTLANG OUTPUT - REAL TIME')
     root2.geometry('1000x600')
@@ -3586,63 +3524,73 @@ def show_result(output_queue=None, qw=100):
     main_frame.pack(expand=True, fill='both', padx=10, pady=15)
 
     entry = tk.Text(main_frame, font=('Consolas',12,'bold'), width=qw, height=30,
-                   background="#1E1E1E", foreground="#D4D4D4", insertbackground="white")
+                   background="#1E1E1E", foreground="#D4D4D4", insertbackground="white", state='disabled')
     entry.pack(expand=True, fill='both')
+    
+    entry.tag_configure("error", foreground="#FF4040", font=('Consolas', 12, 'bold'))
+    entry.tag_configure("success", foreground="#00FF00", font=('Consolas', 12, 'bold'))
+    entry.tag_configure("warning", foreground="#FF8C00", font=('Consolas', 12, 'bold'))
+    entry.tag_configure("info", foreground="#0000FF", font=('Consolas', 12, 'bold'))
+    entry.tag_configure("normal", foreground="#EEFF00", font=('Consolas', 12, 'bold'))
 
     button_frame = tk.Frame(root2)
     button_frame.pack(side='bottom', fill='x', padx=5, pady=5)
     
     execution_running = {'value': True}
-    
-    def stop_execution():
-        execution_running['value'] = False
-        entry.insert(tk.END, "\n[EXECUTION STOPPED BY USER]\n")
+
+    def insert_colored_text(text, tag="normal"):
+        entry.config(state='normal')
+        entry.insert(tk.END, text, tag)
+        entry.config(state='disabled')
         entry.see(tk.END)
-        
-    def clear_output():
-        entry.delete(1.0, tk.END)
-    
-    stop_button = tk.Button(button_frame, text="STOP EXECUTION", command=stop_execution,
-                           font=('Consolas', 10, 'bold'), bg='red', fg='white')
-    stop_button.pack(side='left', padx=5)
-    
-    clear_button = tk.Button(button_frame, text="CLEAR OUTPUT", command=clear_output,
-                            font=('Consolas', 10, 'bold'), bg='blue', fg='white')
-    clear_button.pack(side='left', padx=5)
+
     if output_queue is None:
         entry.insert("1.0", "")
         entry.config(state='disabled')
         root2.mainloop()
         return
+    
     def update_output():
         try:
             while not output_queue.empty():
-                text = output_queue.get_nowait()
-                if text == "__EXECUTION_COMPLETE__":
-                    entry.insert(tk.END, "\n[EXECUTION COMPLETED]\n")
+                message = output_queue.get_nowait()
+                
+                if isinstance(message, dict):
+                    text = message.get('text', '')
+                    color = message.get('color', 'normal')
+                    insert_colored_text(text, color)
+                elif message == "__EXECUTION_COMPLETE__":
+                    insert_colored_text("\n[EXECUTION COMPLETED]\n", "success")
                     execution_running['value'] = False
-                elif text == "__EXECUTION_ERROR__":
-                    entry.insert(tk.END, "\n[EXECUTION ERROR]\n")
+                elif message == "__EXECUTION_ERROR__":
+                    insert_colored_text("\n[EXECUTION ERROR]\n", "error")
                     execution_running['value'] = False
                 else:
-                    entry.insert(tk.END, text)
-                entry.see(tk.END)
+                    if any(error_keyword in str(message) for error_keyword in 
+                           ["[ERROR]", "ERROR:", "Exception", "Traceback", "Error:", "error:"]):
+                        insert_colored_text(str(message), "error")
+                    elif any(warning_keyword in str(message) for warning_keyword in 
+                            ["WARNING", "Warning:", "[WARNING]"]):
+                        insert_colored_text(str(message), "warning")
+                    elif any(info_keyword in str(message) for info_keyword in 
+                            ["Graphics initialized", "DEBUG MODE", "Starting execution"]):
+                        insert_colored_text(str(message), "info")
+                    else:
+                        insert_colored_text(str(message), "normal")
+                
                 root2.update_idletasks()
         except queue.Empty:
             pass
-        
-        # Continue updating if execution is still running
+
         if execution_running['value']:
             root2.after(50, update_output)
 
-    # Start the output updating
     update_output()
 
-    # Handle window closing
     def on_closing():
         execution_running['value'] = False
         root2.destroy()
-        
+    
     root2.protocol("WM_DELETE_WINDOW", on_closing)
     root2.mainloop()
 def show_evaluate_output(code_content):
@@ -3658,7 +3606,17 @@ def show_evaluate_output(code_content):
             
         def write(self, text):
             if text:
-                self.queue.put(text)
+                if any(error_keyword in str(text) for error_keyword in 
+                       ["[ERROR]", "ERROR:", "Exception", "Traceback", "Error:", "error:"]):
+                    self.queue.put({'text': text, 'color': 'error'})
+                elif any(warning_keyword in str(text) for warning_keyword in 
+                        ["WARNING", "Warning:", "[WARNING]"]):
+                    self.queue.put({'text': text, 'color': 'warning'})
+                elif any(info_keyword in str(text) for info_keyword in 
+                        ["Graphics initialized", "DEBUG MODE", "Starting execution"]):
+                    self.queue.put({'text': text, 'color': 'info'})
+                else:
+                    self.queue.put({'text': text, 'color': 'normal'})
         
         def flush(self):
             pass
@@ -3687,9 +3645,9 @@ def show_evaluate_output(code_content):
             output_queue.put("__EXECUTION_COMPLETE__")
             
         except Exception as e:
-            output_queue.put(f"\n[ERROR]: {str(e)}\n")
+            output_queue.put({'text': f"\n[ERROR]: {str(e)}\n", 'color': 'error'})
             import traceback
-            output_queue.put(traceback.format_exc())
+            output_queue.put({'text': traceback.format_exc(), 'color': 'error'})
             output_queue.put("__EXECUTION_ERROR__")
         finally:
             sys.stdout = original_stdout
