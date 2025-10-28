@@ -14,8 +14,6 @@ DEFAULT MESSAGE FROM IDE:
 'NTMDev ...'
 Note from NTMDev: ASTLang 35 is now unsupported
 
-CURRENT MILESTONE: 4500 LINES
-ACHIEVED MILESTONE: 4000 LINES
 ----------------------------------------------------------------------------------------------------------------
 ASTLang for PC, Local based (IDE)
 Supports IDE usuage and file saving with .astlang
@@ -3683,3 +3681,4 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
+
