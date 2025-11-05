@@ -37,8 +37,7 @@ Functions (COMING SOON): TBD
 Adding: 
 - Unsure
 
-Added: InspectCode(), Debugger(), StackTrace(), DataStream(), StreamProcessor(), Pipeline(), ArrayUtils(), Find(), GroupBy(), 
-Parition(), Frequency(), SafeCast(), RangeCheck()
+Added: Super class for Evaluate, as Stack(). Returns IsStack() to see if we are running from __main__.
 Updated: Live console output, including errors 
 ----------------------------------------------------------------------------------------------------------------
 """
@@ -4028,3 +4027,4 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
+
