@@ -7,13 +7,14 @@ except ModuleNotFoundError:
     print('System exception ; ModuleNotFoundError ; Do you have Python installed correctly?')
     exit()
 
-
+class Stack():
+    def IsStack(self):
+        return __name__ == '__main__'
 context: dict[str, object] = dict() # Initialize main register
 info = """
 DEFAULT MESSAGE FROM IDE:
 'NTMDev ...'
 Note from NTMDev: ASTLang 35 is now unsupported
-
 ----------------------------------------------------------------------------------------------------------------
 ASTLang for PC, Local based (IDE)
 Supports IDE usuage and file saving with .astlang
@@ -25,7 +26,7 @@ Created by NTMDev (2025)
 
 Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue
 
-Current Version Stored: ASTLang 37, Pre-Release 5 [BETA]
+Current Version Stored: ASTLang 38, Release 3 [FINAL]
 
 Currently Known Bugs:
 - No file updating permissions for file I/O commands, through ":[state] FilePath", "no update"
@@ -34,9 +35,10 @@ Currently Known Bugs:
 Functions (COMING SOON): TBD
 
 Adding: 
-- custom modules (coming ASTLang 40)
+- Unsure
 
-Added: InspectCode(), Debugger(), StackTrace(), DataStream(), StreamProcessor(), Pipeline()
+Added: InspectCode(), Debugger(), StackTrace(), DataStream(), StreamProcessor(), Pipeline(), ArrayUtils(), Find(), GroupBy(), 
+Parition(), Frequency(), SafeCast(), RangeCheck()
 Updated: Live console output, including errors 
 ----------------------------------------------------------------------------------------------------------------
 """
@@ -736,7 +738,7 @@ def get_user_input(prompt=""):
     popup.wait_window() 
     return result["value"]
 
-class Module(NodeParent):
+class Module(FunctionParent):
     def __init__(self, *ModuleCode):
         self.ModuleCode = ModuleCode
 class PrimitiveWrapper(IntepreterParent):
@@ -1225,17 +1227,17 @@ class ListFiles(IntepreterParent):
         self.DirectoryPath = DirectoryPath
         self.Pattern = Pattern
 
-class EvalExpression(NodeParent):
+class EvalExpression(IntepreterParent):
     def __init__(self, Expression, Globals=ObjNONE(), Locals=ObjNONE()):
         self.Expression = Expression
         self.Globals = Globals
         self.Locals = Locals
-class ExecCode(NodeParent):
+class ExecCode(IntepreterParent):
     def __init__(self, Code, Globals=ObjNONE(), Locals=ObjNONE()):
         self.Code = Code
         self.Globals = Globals
         self.Locals = Locals
-class CallFunction(NodeParent):
+class CallFunction(FunctionParent):
     def __init__(self, FunctionName, Args=ListAssignment(), Kwargs=DictionaryAssign([])):
         self.FunctionName = FunctionName
         self.Args = Args
@@ -1245,7 +1247,7 @@ class Sort(NodeParent):
         self.List = List
         self.Reverse = Reverse
         self.Key = Key
-class Zip(NodeParent):
+class Zip(FunctionParent):
     def __init__(self, *Lists):
         self.Lists = Lists
 class Shuffle(NodeParent):
@@ -1259,10 +1261,6 @@ class Flatten(NodeParent):
     def __init__(self, List, Depth=Integer(1)):
         self.List = List
         self.Depth = Depth
-class Enumerate(NodeParent):
-    def __init__(self, Iterable, Start=Integer(0)):
-        self.Iterable = Iterable
-        self.Start = Start
 
 class SetAssignment(ValueParent):
     def __init__(self, *Elements):
@@ -1281,6 +1279,10 @@ class SetContains(NodeParent):
     def __init__(self, Set, Element):
         self.Set = Set
         self.Element = Element
+class Split(FunctionParent):
+    def __init__(self, Val, Delimiter):
+        self.Val = Val
+        self.Delimiter = Delimiter
 
 class DateTime(NodeParent):
     def __init__(self, Year=ObjNONE(), Month=ObjNONE(), Day=ObjNONE(), Hour=Integer(0), Minute=Integer(0), Second=Integer(0)):
@@ -1367,16 +1369,19 @@ class Regression(NodeParent):
         self.XData = XData
         self.YData = YData
         self.Type = Type
+class Calculate(ValueParent):
+    def __init__(self, Expression):
+        self.Expression = Expression
 
-class InspectCode(NodeParent):
+class InspectCode(IntepreterParent):
     def __init__(self, Object, Property=String('type')):
         self.Object = Object
         self.Property = Property
-class Debugger(NodeParent):
+class Debugger(IntepreterParent):
     def __init__(self, Code, Breakpoints=ListAssignment()):
         self.Code = Code
         self.Breakpoints = Breakpoints
-class StackTrace(NodeParent):
+class StackTrace(IntepreterParent):
     def __init__(self, Depth=Integer(10)):
         self.Depth = Depth
 
@@ -1393,8 +1398,42 @@ class Pipeline(NodeParent):
     def __init__(self, Stages):
         self.Stages = Stages
 
+class ArrayUtils(ValueParent):
+    def __init__(self, Array, Operation, *Args):
+        self.Array = Array
+        self.Operation = Operation
+        self.Args = Args
+class Find(NodeParent):
+    def __init__(self, Collection, Predicate, Mode=String('first')):
+        self.Collection = Collection
+        self.Predicate = Predicate  # function or condition
+        self.Mode = Mode  # 'first', 'last', 'all', 'index'
+class GroupBy(NodeParent):
+    def __init__(self, Collection, KeyFunction):
+        self.Collection = Collection
+        self.KeyFunction = KeyFunction
+class Partition(FunctionParent):
+    def __init__(self, Collection, Predicate):
+        self.Collection = Collection
+        self.Predicate = Predicate
+class Frequency(NodeParent):
+    def __init__(self, Collection):
+        self.Collection = Collection
+
+class SafeCast(NodeParent):
+    def __init__(self, Value, TargetType, DefaultValue=ObjNONE()):
+        self.Value = Value
+        self.TargetType = TargetType
+        self.DefaultValue = DefaultValue
+class RangeCheck(NodeParent):
+    def __init__(self, Value, Min=ObjNONE(), Max=ObjNONE(), Inclusive=Boolean('True')):
+        self.Value = Value
+        self.Min = Min
+        self.Max = Max
+        self.Inclusive = Inclusive
+
 primitive = (str, int, float, list, bool, dict, tuple)
-class Evaluate():
+class Evaluate(Stack):
     def evaluate(self, node, context):
         if isinstance(node, Exit):
             code = self.evaluate(node.Code, context)
@@ -1488,12 +1527,23 @@ class Evaluate():
             valid_modes = {'append', 'del', 'clear', 'sort', 'pop', 'reverse'}
             if mode not in valid_modes:
                 raise ValueError(f"Unsupported ListEdit mode: {mode}")
-            list_name = self.evaluate(node.Name, context)
-            if not isinstance(list_name, str):
-                raise TypeError(f"ListEdit Name must evaluate to a string, got {type(list_name)}")
-            if list_name not in context:
-                raise NameError(f"List '{list_name}' is not defined in context")
-            c = list(context.get(list_name))
+            
+            if isinstance(node.Name, str):
+                list_name = node.Name
+                if list_name not in context:
+                    raise NameError(f"List '{list_name}' is not defined in context")
+                c = context.get(list_name)
+            elif hasattr(node.Name, 'Name'):
+                list_name = node.Name.Name
+                if list_name not in context:
+                    raise NameError(f"List '{list_name}' is not defined in context")
+                c = context.get(list_name)
+            else:
+                c = self.evaluate(node.Name, context)
+            
+            if not isinstance(c, list):
+                raise TypeError(f"ListEdit requires a list, got {type(c)}")
+            
             if mode == 'append':
                 apnd = self.evaluate(node.AppendVal, context)
                 c.append(apnd)
@@ -1504,21 +1554,24 @@ class Evaluate():
                         c.remove(Del)
                 elif node.DelIndex:
                     delIndex = self.evaluate(node.DelIndex, context)
-                    if delIndex in range(0, len(c)):
+                    if 0 <= delIndex < len(c):
                         del c[delIndex]
             elif mode == 'clear':
                 c.clear()
             elif mode == 'sort':
-                c.sort(reverse=node.ReversedSort)
+                c.sort(reverse=self.evaluate(node.ReversedSort, context))
             elif mode == 'pop':
                 popi = self.evaluate(node.PopIndex, context)
-                if popi in range(0, len(c)):
+                if 0 <= popi < len(c):
                     popped = c.pop(popi)
-                    context[list_name] = c 
+                    if list_name:
+                        context[list_name] = c 
                     return popped
             elif mode == 'reverse':
                 c.reverse()
-            context[list_name] = c
+            if list_name:
+                context[list_name] = c
+            
             return c
         elif isinstance(node, Range):
             bmin = self.evaluate(node.BoundMin, context)
@@ -1568,29 +1621,32 @@ class Evaluate():
                     print(value, end=end_val)
                 return None
             elif isinstance(node.Function, Len):
-                    var = self.evaluate(node.Var, context)
+                    var = self.evaluate(node.Function.Var, context)
                     return len(var)
             elif isinstance(node.Function, Max):
-                    var = list(self.evaluate(node.Var, context))
+                    var = list(self.evaluate(node.Function.Var, context))
                     return max(var)
             elif isinstance(node.Function, Min):
-                var = list(self.evaluate(node.Var, context))
+                var = list(self.evaluate(node.Function.Var, context))
                 return min(var)
         elif isinstance(node, Condition):
             left = self.evaluate(node.Left, context)
             right = self.evaluate(node.Right, context)
-            if node.Operator == '==':
-                return left == right
-            elif node.Operator == '!=':
-                return left != right
-            elif node.Operator == '>':
-                return left > right
-            elif node.Operator == '<':
-                return left < right
-            elif node.Operator == '>=':
-                return left >= right
-            elif node.Operator == '<=':
-                return left <= right
+            if left is None or right is None:
+                return
+            match node.Operator:
+                case '==':
+                    return left == right
+                case '!=':
+                    return left != right
+                case '>':
+                    return left > right
+                case '<':
+                    return left < right
+                case '>=':
+                    return left >= right
+                case '<=':
+                    return left <= right
         elif isinstance(node, LogicalOperation):
             left = self.evaluate(node.LeftOp, context)
             right = self.evaluate(node.RightOp, context)
@@ -1758,8 +1814,16 @@ class Evaluate():
 
             local_context = context if self.evaluate(node.Global, context) else context.copy()
 
-            for param, arg in zip(func_def.Param, node.Args):
+            if hasattr(node.Args, 'Lst'):
+                args_list = node.Args.Lst
+            elif isinstance(node.Args, list):
+                args_list = node.Args
+            else:
+                args_list = [node.Args] if node.Args else []
+
+            for param, arg in zip(func_def.Param, args_list):
                 local_context[param] = self.evaluate(arg, context)
+            
             if any(isinstance(stmt, YieldGenerator) for stmt in func_def.Body):
                 def generator():
                     for stmt in func_def.Body:
@@ -1772,6 +1836,7 @@ class Evaluate():
                                 yield yielded
                     return
                 return generator()
+            
             result = None
             for stmt in func_def.Body:
                 val = self.evaluate(stmt, local_context)
@@ -2888,10 +2953,6 @@ class Evaluate():
                 return result
             
             return flatten_list(lst, depth)
-        elif isinstance(node, Enumerate):
-            iterable = self.evaluate(node.Iterable, context)
-            start = self.evaluate(node.Start, context)
-            return list(enumerate(iterable, start))
         elif isinstance(node, SetAssignment):
             return set(self.evaluate(elem, context) for elem in node.Elements)        
         elif isinstance(node, SetOperations):
@@ -3238,7 +3299,7 @@ class Evaluate():
                 if line_num in breakpoints:
                     print(f"\nBREAKPOINT HIT at line {line_num}")
                     print(f"Current variables: {debug_info['variables']}")
-                    print(f"Call stack depth: {len(debug_info['call_stack'])}")
+                    print(f"Call Stack depth: {len(debug_info['call_stack'])}")
                     while True:
                         cmd = input("Debug> (c)ontinue, (s)tep, (v)ariables, (st)ack, (q)uit: ").strip().lower()
                         if cmd in ['c', 'continue']:
@@ -3266,7 +3327,7 @@ class Evaluate():
                 else:
                     result = debug_evaluate(code, context, 1)
                 
-                print("🏁 DEBUG MODE: Execution completed successfully")
+                print("Execution completed successfully")
                 return result
                 
             except Exception as e:
@@ -3494,6 +3555,298 @@ class Evaluate():
                 return data
             
             return create_pipeline
+        elif isinstance(node, ArrayUtils):
+            array = self.evaluate(node.Array, context)
+            operation = self.evaluate(node.Operation, context)
+            args = [self.evaluate(arg, context) for arg in node.Args]
+            
+            if not isinstance(array, list):
+                raise TypeError("ArrayUtils requires a list")
+            
+            if operation == 'chunk':
+                chunk_size = args[0] if args else 2
+                if not isinstance(chunk_size, int) or chunk_size <= 0:
+                    raise ValueError("Chunk size must be a positive integer")
+                return [array[i:i + chunk_size] for i in range(0, len(array), chunk_size)]
+            
+            elif operation == 'rotate':
+                steps = args[0] if args else 1
+                if not isinstance(steps, int):
+                    raise ValueError("Rotation steps must be an integer")
+                if len(array) == 0:
+                    return array
+                steps = steps % len(array)
+                return array[steps:] + array[:steps]
+            
+            elif operation == 'interleave':
+                other_array = args[0] if args else []
+                if not isinstance(other_array, list):
+                    raise TypeError("Interleave requires another list")
+                result = []
+                max_len = max(len(array), len(other_array))
+                for i in range(max_len):
+                    if i < len(array):
+                        result.append(array[i])
+                    if i < len(other_array):
+                        result.append(other_array[i])
+                return result
+            
+            elif operation == 'difference':
+                other_array = args[0] if args else []
+                if not isinstance(other_array, list):
+                    raise TypeError("Difference requires another list")
+                return [item for item in array if item not in other_array]
+            
+            elif operation == 'flatten':
+                depth = args[0] if args else 1
+                def flatten_recursive(lst, d):
+                    if d <= 0:
+                        return lst
+                    result = []
+                    for item in lst:
+                        if isinstance(item, list):
+                            result.extend(flatten_recursive(item, d-1))
+                        else:
+                            result.append(item)
+                    return result
+                return flatten_recursive(array, depth)
+            
+            else:
+                raise ValueError(f"Unknown ArrayUtils operation: {operation}")
+        elif isinstance(node, Find):
+            collection = self.evaluate(node.Collection, context)
+            predicate = self.evaluate(node.Predicate, context)
+            mode = self.evaluate(node.Mode, context)
+            
+            if not hasattr(collection, '__iter__'):
+                raise TypeError("Find requires an iterable collection")
+            
+            matches = []
+            indices = []
+            
+            for i, item in enumerate(collection):
+                match = False
+                
+                if callable(predicate):
+                    match = predicate(item)
+                elif isinstance(predicate, str):
+                    func_def = context.get(predicate)
+                    if isinstance(func_def, DefineFunction):
+                        local_context = context.copy()
+                        if len(func_def.Param) != 1:
+                            raise ValueError("Find predicate function must take 1 parameter")
+                        local_context[func_def.Param[0]] = item
+                        
+                        func_result = None
+                        for stmt in func_def.Body:
+                            func_result = self.evaluate(stmt, local_context)
+                            if isinstance(stmt, Return):
+                                break
+                        match = bool(func_result)
+                    else:
+                        match = str(item) == predicate
+                else:
+                    match = item == predicate
+                
+                if match:
+                    matches.append(item)
+                    indices.append(i)
+            
+            if mode == 'first':
+                return matches[0] if matches else None
+            elif mode == 'last':
+                return matches[-1] if matches else None
+            elif mode == 'all':
+                return matches
+            elif mode == 'index':
+                return indices[0] if indices else -1
+            else:
+                raise ValueError(f"Unknown Find mode: {mode}")
+        elif isinstance(node, GroupBy):
+            collection = self.evaluate(node.Collection, context)
+            key_function = self.evaluate(node.KeyFunction, context)
+            
+            if not hasattr(collection, '__iter__'):
+                raise TypeError("GroupBy requires an iterable collection")
+            
+            groups = {}
+            
+            for item in collection:
+                if callable(key_function):
+                    key = key_function(item)
+                elif isinstance(key_function, str):
+                    func_def = context.get(key_function)
+                    if isinstance(func_def, DefineFunction):
+                        local_context = context.copy()
+                        if len(func_def.Param) != 1:
+                            raise ValueError("GroupBy key function must take 1 parameter")
+                        local_context[func_def.Param[0]] = item
+                        
+                        func_result = None
+                        for stmt in func_def.Body:
+                            func_result = self.evaluate(stmt, local_context)
+                            if isinstance(stmt, Return):
+                                break
+                        key = func_result
+                    else:
+                        if hasattr(item, key_function):
+                            key = getattr(item, key_function)
+                        elif isinstance(item, dict):
+                            key = item.get(key_function)
+                        else:
+                            key = str(item)
+                else:
+                    key = key_function
+                
+                if key not in groups:
+                    groups[key] = []
+                groups[key].append(item)
+            
+            return groups
+        elif isinstance(node, Partition):
+            collection = self.evaluate(node.Collection, context)
+            predicate = self.evaluate(node.Predicate, context)
+            
+            if not hasattr(collection, '__iter__'):
+                raise TypeError("Partition requires an iterable collection")
+            
+            true_items = []
+            false_items = []
+            
+            for item in collection:
+                match = False
+                
+                if callable(predicate):
+                    match = predicate(item)
+                elif isinstance(predicate, str):
+                    func_def = context.get(predicate)
+                    if isinstance(func_def, DefineFunction):
+                        local_context = context.copy()
+                        if len(func_def.Param) != 1:
+                            raise ValueError("Partition predicate function must take 1 parameter")
+                        local_context[func_def.Param[0]] = item
+                        
+                        func_result = None
+                        for stmt in func_def.Body:
+                            func_result = self.evaluate(stmt, local_context)
+                            if isinstance(stmt, Return):
+                                break
+                        match = bool(func_result)
+                    else:
+                        match = str(item) == predicate
+                else:
+                    match = item == predicate
+                
+                if match:
+                    true_items.append(item)
+                else:
+                    false_items.append(item)
+            
+            return [true_items, false_items]
+        elif isinstance(node, Frequency):
+            collection = self.evaluate(node.Collection, context)
+            
+            if not hasattr(collection, '__iter__'):
+                raise TypeError("Frequency requires an iterable collection")
+            
+            frequency_count = {}
+            for item in collection:
+                frequency_count[item] = frequency_count.get(item, 0) + 1
+            
+            return frequency_count
+        elif isinstance(node, SafeCast):
+            value = self.evaluate(node.Value, context)
+            target_type = self.evaluate(node.TargetType, context)
+            default_value = self.evaluate(node.DefaultValue, context) if not isinstance(node.DefaultValue, ObjNONE) else None
+            
+            try:
+                if target_type == 'int':
+                    return int(value)
+                elif target_type == 'float':
+                    return float(value)
+                elif target_type == 'str':
+                    return str(value)
+                elif target_type == 'bool':
+                    if isinstance(value, str):
+                        return value.lower() in ('true', '1', 'yes', 'on')
+                    return bool(value)
+                elif target_type == 'list':
+                    if isinstance(value, str):
+                        try:
+                            import json
+                            return json.loads(value)
+                        except:
+                            return list(value)
+                    return list(value)
+                else:
+                    raise ValueError(f"Unknown target type: {target_type}")
+            
+            except (ValueError, TypeError):
+                if default_value is not None:
+                    return default_value
+                else:
+                    raise ValueError(f"Cannot cast {value} to {target_type} and no default provided")
+        elif isinstance(node, RangeCheck):
+            value = self.evaluate(node.Value, context)
+            min_val = self.evaluate(node.Min, context) if not isinstance(node.Min, ObjNONE) else None
+            max_val = self.evaluate(node.Max, context) if not isinstance(node.Max, ObjNONE) else None
+            inclusive = self.evaluate(node.Inclusive, context)
+            
+            if not isinstance(value, (int, float)):
+                raise TypeError("RangeCheck requires a numeric value")
+            
+            result = {
+                'value': value,
+                'in_range': True,
+                'violations': []
+            }
+            
+            if min_val is not None:
+                if inclusive:
+                    if value < min_val:
+                        result['in_range'] = False
+                        result['violations'].append(f"Value {value} is less than minimum {min_val}")
+                else:
+                    if value <= min_val:
+                        result['in_range'] = False
+                        result['violations'].append(f"Value {value} is less than or equal to minimum {min_val}")
+            
+            if max_val is not None:
+                if inclusive:
+                    if value > max_val:
+                        result['in_range'] = False
+                        result['violations'].append(f"Value {value} is greater than maximum {max_val}")
+                else:
+                    if value >= max_val:
+                        result['in_range'] = False
+                        result['violations'].append(f"Value {value} is greater than or equal to maximum {max_val}")
+            
+            return result
+        elif isinstance(node, Calculate):
+            ex = self.evaluate(node.Expression, context)
+            import re
+            if not re.match(r'^[0-9+\-*/.() \t\n]+$', ex):
+                raise ValueError(f"Calculate: Expression contains invalid characters: {ex}")
+            danpattern = ['import', 'exec', 'eval', '__', 'open', 'file']
+            for pattern in danpattern:
+                if pattern in ex.lower():
+                    raise ValueError(f"Calculate: Dangerous pattern '{pattern}' detected")
+            
+            try:
+                result = eval(ex, {'__builtins__': {}}, {})
+                return result
+            except Exception as e:
+                raise ValueError(f"Calculate: Error evaluating '{ex}': {str(e)}")
+        elif isinstance(node, Split):
+            text = str(self.evaluate(node.Val, context))
+            delimiter = self.evaluate(node.Delimiter, context)
+            
+            if not isinstance(text, str):
+                raise TypeError("Split requires a string to split")
+            if not isinstance(delimiter, str):
+                raise TypeError("Split delimiter must be a string")
+            
+            return text.split(delimiter)
         else:
             if node is None:
                 print("[WARNING]: Evaluated node is NoneType")
@@ -3507,7 +3860,6 @@ class Evaluate():
                 print(f"[ERROR]: Node value: {node}")
                 print(f"[ERROR]: Node repr: {repr(node)}")
                 raise TypeError(f"Unsupported AST node type: {type(node)}")
-
 E = Evaluate()
 def show_result(output_queue=None, qw=100):
     global entry
@@ -3525,11 +3877,9 @@ def show_result(output_queue=None, qw=100):
                    background="#1E1E1E", foreground="#D4D4D4", insertbackground="white", state='disabled')
     entry.pack(expand=True, fill='both')
     
-    entry.tag_configure("error", foreground="#FF4040", font=('Consolas', 12, 'bold'))
+    entry.tag_configure("error", foreground="#FF0000", font=('Consolas', 12, 'bold'))
     entry.tag_configure("success", foreground="#00FF00", font=('Consolas', 12, 'bold'))
-    entry.tag_configure("warning", foreground="#FF8C00", font=('Consolas', 12, 'bold'))
-    entry.tag_configure("info", foreground="#0000FF", font=('Consolas', 12, 'bold'))
-    entry.tag_configure("normal", foreground="#EEFF00", font=('Consolas', 12, 'bold'))
+    entry.tag_configure("normal", foreground="#FFFFFF", font=('Consolas', 12, 'bold'))
 
     button_frame = tk.Frame(root2)
     button_frame.pack(side='bottom', fill='x', padx=5, pady=5)
@@ -3565,14 +3915,11 @@ def show_result(output_queue=None, qw=100):
                     execution_running['value'] = False
                 else:
                     if any(error_keyword in str(message) for error_keyword in 
-                           ["[ERROR]", "ERROR:", "Exception", "Traceback", "Error:", "error:"]):
+                           ["[ERROR]"]):
                         insert_colored_text(str(message), "error")
-                    elif any(warning_keyword in str(message) for warning_keyword in 
-                            ["WARNING", "Warning:", "[WARNING]"]):
-                        insert_colored_text(str(message), "warning")
                     elif any(info_keyword in str(message) for info_keyword in 
-                            ["Graphics initialized", "DEBUG MODE", "Starting execution"]):
-                        insert_colored_text(str(message), "info")
+                            ["DEBUG MODE", "Starting execution"]):
+                        insert_colored_text(str(message), "normal")
                     else:
                         insert_colored_text(str(message), "normal")
                 
@@ -3643,7 +3990,7 @@ def show_evaluate_output(code_content):
             output_queue.put("__EXECUTION_COMPLETE__")
             
         except Exception as e:
-            output_queue.put({'text': f"\n[ERROR]: {str(e)}\n", 'color': 'error'})
+            output_queue.put({'text': f"\n[FATAL ERROR AT {Evaluate.__name__}]: {str(e)}\n", 'color': 'error'})
             import traceback
             output_queue.put({'text': traceback.format_exc(), 'color': 'error'})
             output_queue.put("__EXECUTION_ERROR__")
@@ -3681,5 +4028,3 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
-
-
