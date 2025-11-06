@@ -910,17 +910,17 @@ class InitVariable(NodeParent):
 class FuncCall(FunctionParent): #Simple Function Call
     def __init__(self, Function):
         self.Function = Function
-class Print(FunctionParent):
+class Print(NodeParent):
     def __init__(self, Contents, End=PrimitiveWrapper('\n')):
         self.Contents = Contents
         self.End = End
 class Len(NodeParent):
     def __init__(self, Var):
         self.Var = Var
-class Max(FunctionParent):
+class Max(ValueParent):
     def __init__(self, Var):
         self.Var = Var
-class Min(FunctionParent):
+class Min(ValueParent):
     def __init__(self, Var):
         self.Var = Var
 
@@ -4027,4 +4027,5 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
+
 
