@@ -1,8 +1,10 @@
 # ASTLang
 A functional and turing complete [esolang](https://esolangs.org/wiki/Main_Page)
+**Current Version:** *ASTLang 38, Release 3*
+**NEXT Releasse:** *ASTLang 38, Release 4 [PRE-RELEASE]*
 
 ## WARNING!
-__Not to be confused with the `java.lang.Object` class, `ast.ASTLang`!__
+*Not to be confused with the `java.lang.Object` class, `ast.ASTLang`!*
 
 Note that there is a java package with a similar name as this project. This project is not affliated with the package in any way or form, and was not based off of the java package. Java is a product of Oracle, which aquired the original author of Java, Sun Microsystems. 
 
