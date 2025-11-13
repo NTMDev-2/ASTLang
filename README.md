@@ -1,7 +1,7 @@
 # ASTLang
 A functional and turing complete [esolang](https://esolangs.org/wiki/Main_Page)
 
-Official Documentation is [here](https://esolangs.org/wiki/ASTLang)
+Official Documentation is [here](https://esolangs.org/wiki/ASTLang) (This is currently *unfinished*)
 
 **Current Version:** *ASTLang 38, Release 3*
 
