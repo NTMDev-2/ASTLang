@@ -727,8 +727,6 @@ def get_user_input(prompt=""):
     
     text_widget.bind("<Control-Return>", on_enter)
     popup.bind("<Escape>", lambda e: (setattr(result, 'value', ""), popup.destroy(), root2.destroy()))
-    
-    # Center the popup
     popup.update_idletasks()
     x = (popup.winfo_screenwidth() // 2) - (popup.winfo_width() // 2)
     y = (popup.winfo_screenheight() // 2) - (popup.winfo_height() // 2)
@@ -910,17 +908,17 @@ class InitVariable(NodeParent):
 class FuncCall(FunctionParent): #Simple Function Call
     def __init__(self, Function):
         self.Function = Function
-class Print(NodeParent):
+class Print(FunctionParent):
     def __init__(self, Contents, End=PrimitiveWrapper('\n')):
         self.Contents = Contents
         self.End = End
 class Len(NodeParent):
     def __init__(self, Var):
         self.Var = Var
-class Max(ValueParent):
+class Max(FunctionParent):
     def __init__(self, Var):
         self.Var = Var
-class Min(ValueParent):
+class Min(FunctionParent):
     def __init__(self, Var):
         self.Var = Var
 
@@ -1333,14 +1331,14 @@ class WarningRaise(NodeParent):
 class ErrorContext(NodeParent):
     def __init__(self, Body, ErrorHandlers=ListAssignment()):
         self.Body = Body
-        self.ErrorHandlers = ErrorHandlers  # List of (ErrorType, HandlerBody) tuples
+        self.ErrorHandlers = ErrorHandlers
 class CustomError(NodeParent):
     def __init__(self, Name, BaseError=String('Exception')):
         self.Name = Name
         self.BaseError = BaseError
 class GetErrorInfo(NodeParent):
     def __init__(self, Error):
-        self.Error = Error  # Returns traceback, message, type info
+        self.Error = Error
 
 class Statistics(NodeParent):
     def __init__(self, Data, Operation):
@@ -1405,8 +1403,8 @@ class ArrayUtils(ValueParent):
 class Find(NodeParent):
     def __init__(self, Collection, Predicate, Mode=String('first')):
         self.Collection = Collection
-        self.Predicate = Predicate  # function or condition
-        self.Mode = Mode  # 'first', 'last', 'all', 'index'
+        self.Predicate = Predicate
+        self.Mode = Mode
 class GroupBy(NodeParent):
     def __init__(self, Collection, KeyFunction):
         self.Collection = Collection
@@ -1459,8 +1457,10 @@ class Evaluate(Stack):
         elif isinstance(node, CastToValue):
             if isinstance(node.Var, Variable): 
                 varname = node.Var.Name
+            elif not isinstance(node.Var, Variable):
+                varname = self.evaluate(node.Var, context)
             else: 
-                raise Exception("CastToValue requires a Variable node")
+                raise Exception("CastToValue requires a valid node")
             value = self.evaluate(node.Var, context)
             match node.CastVal:
                 case 'str':
@@ -3013,65 +3013,6 @@ class Evaluate(Stack):
         elif isinstance(node, DateTimeNow):
             from datetime import datetime
             return datetime.now()
-        elif isinstance(node, DateTimeFormat):
-            from datetime import datetime
-            dt = self.evaluate(node.DateTime, context)
-            format_str = self.evaluate(node.Format, context)
-            if not isinstance(dt, datetime):
-                raise TypeError("DateTimeFormat requires a datetime object")
-            
-            return dt.strftime(format_str)
-        elif isinstance(node, DateTimeParse):
-            from datetime import datetime
-            date_string = self.evaluate(node.DateString, context)
-            format_str = self.evaluate(node.Format, context)
-            
-            try:
-                return datetime.strptime(date_string, format_str)
-            except ValueError as e:
-                raise ValueError(f"Error parsing date '{date_string}': {str(e)}")
-        elif isinstance(node, TimeDelta):
-            from datetime import timedelta
-            days = self.evaluate(node.Days, context)
-            hours = self.evaluate(node.Hours, context)
-            minutes = self.evaluate(node.Minutes, context)
-            seconds = self.evaluate(node.Seconds, context)
-
-            return timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
-        elif isinstance(node, DateTimeAdd):
-            dt = self.evaluate(node.DateTime, context)
-            td = self.evaluate(node.TimeDelta, context)
-            
-            from datetime import datetime, timedelta
-            if not isinstance(dt, datetime) or not isinstance(td, timedelta):
-                raise TypeError("DateTimeAdd requires datetime and timedelta objects")
-            
-            return dt + td
-        elif isinstance(node, DateTimeSubtract):
-            dt1 = self.evaluate(node.DateTime1, context)
-            dt2 = self.evaluate(node.DateTime2, context)
-            
-            from datetime import datetime
-            if not isinstance(dt1, datetime) or not isinstance(dt2, datetime):
-                raise TypeError("DateTimeSubtract requires datetime objects")
-            
-            return dt1 - dt2
-        elif isinstance(node, DateTimeCompare):
-            dt1 = self.evaluate(node.DateTime1, context)
-            dt2 = self.evaluate(node.DateTime2, context)
-            operation = node.Operation
-            from datetime import datetime
-            if not isinstance(dt1, datetime) or not isinstance(dt2, datetime):
-                raise TypeError("DateTimeCompare requires datetime objects")
-            
-            if operation == 'before':
-                return dt1 < dt2
-            elif operation == 'after':
-                return dt1 > dt2
-            elif operation == 'equal':
-                return dt1 == dt2
-            else:
-                raise ValueError(f"Unknown comparison operation: {operation}")
         elif isinstance(node, Statistics):
             data = self.evaluate(node.Data, context)
             operation = node.Operation
@@ -4027,5 +3968,3 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
-
-
