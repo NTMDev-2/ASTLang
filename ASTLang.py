@@ -1292,34 +1292,7 @@ class DateTime(NodeParent):
 class DateTimeNow(NodeParent):
     def __init__(self):
         pass
-class DateTimeFormat(NodeParent):
-    def __init__(self, DateTime, Format=String('%Y-%m-%d %H:%M:%S')):
-        self.DateTime = DateTime
-        self.Format = Format
-class DateTimeParse(NodeParent):
-    def __init__(self, DateString, Format=String('%Y-%m-%d %H:%M:%S')):
-        self.DateString = DateString
-        self.Format = Format
-class TimeDelta(NodeParent):
-    def __init__(self, Days=Integer(0), Hours=Integer(0), Minutes=Integer(0), Seconds=Integer(0)):
-        self.Days = Days
-        self.Hours = Hours
-        self.Minutes = Minutes
-        self.Seconds = Seconds
-class DateTimeAdd(NodeParent):
-    def __init__(self, DateTime, TimeDelta):
-        self.DateTime = DateTime
-        self.TimeDelta = TimeDelta
-class DateTimeSubtract(NodeParent):
-    def __init__(self, DateTime1, DateTime2):
-        self.DateTime1 = DateTime1
-        self.DateTime2 = DateTime2
-class DateTimeCompare(NodeParent):
-    def __init__(self, DateTime1, DateTime2, Operation):
-        self.DateTime1 = DateTime1
-        self.DateTime2 = DateTime2
-        self.Operation = Operation
-
+        
 class Assert(NodeParent):
     def __init__(self, Condition, Message=String('Assertion failed')):
         self.Condition = Condition
@@ -3968,3 +3941,4 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
+
