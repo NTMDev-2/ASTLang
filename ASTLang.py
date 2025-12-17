@@ -26,19 +26,13 @@ Created by NTMDev (2025)
 
 Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue
 
-Current Version Stored: ASTLang 38, Release 3 [FINAL]
+Current Version Stored: ASTLang 39, Release 1 [BETA]
 
 Currently Known Bugs:
 - No file updating permissions for file I/O commands, through ":[state] FilePath", "no update"
-- Cannot reopen a file after saving
 
-Functions (COMING SOON): TBD
-
-Adding: 
-- Unsure
-
-Added: Super class for Evaluate, as Stack(). Returns IsStack() to see if we are running from __main__.
-Updated: Live console output, including errors 
+Added: AugAssignment
+Updated: NewInstance parameter constructor evaluator: fixed "self" evaluation
 ----------------------------------------------------------------------------------------------------------------
 """
 print(info)
@@ -279,6 +273,12 @@ def txteditor_ui(initial=''):
             finally:
                 autocomplete_box = None
                 listbox = None
+        
+        try:
+            code_text.bind("<Down>", lambda e: "break")
+            code_text.bind("<Up>", lambda e: "break")
+        except:
+            pass
 
     def hide_signature():
         global signature_box
@@ -330,7 +330,9 @@ def txteditor_ui(initial=''):
         listbox = tk.Listbox(
             autocomplete_box,
             height=min(len(suggestions), 6),
-            font=('Consolas', 12)
+            font=('Consolas', 12),
+            bg="#363636",
+            fg="#00EEFF",
         )
         listbox.pack()
 
@@ -471,7 +473,6 @@ def txteditor_ui(initial=''):
 
         hide_signature()
 
-
     root = tk.Tk()
     root.title('ASTLang IDE')
     root.geometry('800x700')
@@ -479,24 +480,29 @@ def txteditor_ui(initial=''):
     button_frame = tk.Frame(root)
     button_frame.pack(side='bottom', fill='x', padx=5, pady=5)
     tk.Button(button_frame, text="RUN ASTLANG PROGRAM", command=submit,
-              font=('Consolas', 12, 'bold')).pack(side='left', fill='x', expand=True, padx=5)
+                font=('Consolas', 12, 'bold')).pack(side='left', fill='x', expand=True, padx=5)
 
     editor_frame = tk.Frame(root)
     editor_frame.pack(expand=True, fill='both')
-
     scrollbar = tk.Scrollbar(editor_frame)
     scrollbar.pack(side='right', fill='y')
-
     line_numbers = tk.Text(
-        editor_frame, width=4, padx=3, takefocus=0, border=0,
-        background='lightgray', state='disabled', font=('Consolas', 12, 'bold'),
-        yscrollcommand=on_scroll
-    )
+    editor_frame, width=4, padx=3, takefocus=0, border=0,
+            background='lightgray', state='disabled', font=('Consolas', 12, 'bold'),
+            yscrollcommand=on_scroll
+        )
     line_numbers.pack(side='left', fill='y')
 
     code_text = tk.Text(editor_frame, font=('Consolas', 12),
-                        yscrollcommand=on_scroll, background="#1E1E1E", foreground="#D4D4D4",
-                        insertbackground="white", wrap='none')
+                            yscrollcommand=on_scroll, background="#1E1E1E", foreground="#D4D4D4",
+                            insertbackground="white", wrap='none')
+    code_text.config(
+            insertwidth=float(2.5), 
+            insertofftime=300, 
+            insertontime=600, 
+            insertbackground="#FFFFFF", 
+            insertborderwidth=1
+        )
     code_text.pack(expand=True, fill='both')
     code_text.insert(tk.END, initial)
     scrollbar.config(command=on_scroll)
@@ -735,7 +741,7 @@ def get_user_input(prompt=""):
     popup.wait_window() 
     return result["value"]
 
-class Module(FunctionParent):
+class Module(NodeParent):
     def __init__(self, *ModuleCode):
         self.ModuleCode = ModuleCode
 class PrimitiveWrapper(IntepreterParent):
@@ -905,7 +911,7 @@ class InitVariable(NodeParent):
     def __init__(self, Name):
         self.Name = Name
 
-class FuncCall(FunctionParent): #Simple Function Call
+class FuncCall(IntepreterParent): #Simple Function Call
     def __init__(self, Function):
         self.Function = Function
 class Print(FunctionParent):
@@ -1089,7 +1095,7 @@ class FormattedString(NodeParent):
         self.Args = Args
 
 class Slice(NodeParent):
-    def __init__(self, Var, Start=ObjNONE(), End=ObjNONE(), Step=ObjNONE()):
+    def __init__(self, Var, Start=ObjNONE(), End=ObjNONE(), Step=Integer(1)):
         self.Var = Var
         self.Start = Start 
         self.End = End  
@@ -1292,11 +1298,7 @@ class DateTime(NodeParent):
 class DateTimeNow(NodeParent):
     def __init__(self):
         pass
-        
-class Assert(NodeParent):
-    def __init__(self, Condition, Message=String('Assertion failed')):
-        self.Condition = Condition
-        self.Message = Message
+
 class WarningRaise(NodeParent):
     def __init__(self, Message, Category=String('UserWarning')):
         self.Message = Message
@@ -1390,6 +1392,10 @@ class Frequency(NodeParent):
     def __init__(self, Collection):
         self.Collection = Collection
 
+class Assert(IntepreterParent):
+    def __init__(self, Condition, Message=String('Assertion')):
+        self.Condition = Condition
+        self.Message = Message
 class SafeCast(NodeParent):
     def __init__(self, Value, TargetType, DefaultValue=ObjNONE()):
         self.Value = Value
@@ -1401,6 +1407,12 @@ class RangeCheck(NodeParent):
         self.Min = Min
         self.Max = Max
         self.Inclusive = Inclusive
+
+class AugAssignment(NodeParent):
+    def __init__(self, Name, Operator, Value):
+        self.Name = Name
+        self.Operator = Operator
+        self.Value = Value
 
 primitive = (str, int, float, list, bool, dict, tuple)
 class Evaluate(Stack):
@@ -1451,10 +1463,14 @@ class Evaluate(Stack):
             return casted
         elif isinstance(node, Integer):
             if isinstance(node.Int, int):
+                if node.Int >= 2**32:
+                    raise OverflowError("Integer too large, expected 2^32")
                 return node.Int
             return int(self.evaluate(node.Int, context))
         elif isinstance(node, Float):
             if isinstance(node.Flt, float):
+                if node.Flt >= float(2^32):
+                    raise OverflowError("Float too large, expected 2^32") 
                 return node.Flt
             return float(self.evaluate(node.Flt, context))
         elif isinstance(node, Boolean):
@@ -1857,7 +1873,6 @@ class Evaluate(Stack):
                     return var_val.get(key, 0)
                 if has_key:
                     return key in var_val
-                raise Exception("DictGet: no key specified for dictionary lookup")
             elif isinstance(var_val, list):
                 if slice_val:
                     start, stop, step = slice_val
@@ -2316,7 +2331,6 @@ class Evaluate(Stack):
                 
                 constructor = class_def['constructor']
                 
-                # Fix: Handle ListAssignment properly
                 if hasattr(node.Args, 'Lst'):
                     args_list = node.Args.Lst
                 elif isinstance(node.Args, list):
@@ -2325,14 +2339,19 @@ class Evaluate(Stack):
                     args_list = [node.Args] if node.Args else []
                 
                 constructor_params = constructor.get('params', [])
-                if len(args_list) != len(constructor_params):
-                    raise ValueError(f"Constructor expects {len(constructor_params)} arguments, got {len(args_list)}")
                 
-                params = constructor_params[:]
-                if params and params[0] == 'self':
-                    params = params[1:]
+                expected_params = constructor_params[:]
+                if expected_params and expected_params[0] == 'self':
+                    expected_params = expected_params[1:]
+                
+                if len(args_list) != len(expected_params):
+                    raise ValueError(f"Constructor expects {len(expected_params)} arguments, got {len(args_list)}")
+
+                params_to_bind = constructor_params[:]
+                if params_to_bind and params_to_bind[0] == 'self':
+                    params_to_bind = params_to_bind[1:]
                     
-                for param, arg in zip(params, args_list):
+                for param, arg in zip(params_to_bind, args_list):
                     local_context[param] = self.evaluate(arg, context)
                 
                 for stmt in constructor.get('body', []):
@@ -3760,6 +3779,16 @@ class Evaluate(Stack):
                 raise TypeError("Split delimiter must be a string")
             
             return text.split(delimiter)
+        elif isinstance(node, AugAssignment):
+            name = node.Name
+            val = self.evaluate(node.Value, context)
+            operation = node.Operator
+            if operation in ['+', '-', '*', '/']:
+                evaluated_value = self.evaluate(Operation(Variable(name), operation, val), context)
+            else:
+                raise ValueError("AugAssignment requires a valid mathematical operator")
+            context[name] = evaluated_value
+            return None
         else:
             if node is None:
                 print("[WARNING]: Evaluated node is NoneType")
@@ -3923,6 +3952,8 @@ def MAIN():
                 show_evaluate_output(code_content)
             else:
                 return
+        except tk.Tcl_AsyncDeleteError:
+            pass
         except NameError:
             messagebox.showerror('ERROR', 'DID NOT RECIEVE ANY CODE FOR IDE')
             traceback.print_exc()
@@ -3941,4 +3972,3 @@ def MAIN():
 if not ran:
     MAIN()
     ran = True
-
