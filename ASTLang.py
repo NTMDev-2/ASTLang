@@ -37,6 +37,8 @@ Currently Known Bugs:
 - No file updating permissions for file I/O commands, through ":[state] FilePath", "no update"
 - Updating dictionaries is currently very buggy
 
+COMING SOON: HTTP requests and potentially web sockets
+
 Added: AugAssignment
 Updated: NewInstance parameter constructor evaluator: fixed "self" evaluation
 ----------------------------------------------------------------------------------------------------------------
@@ -3983,3 +3985,4 @@ def MAIN():
                 traceback.print_exc()
                 MAIN()
 MAIN()
+
