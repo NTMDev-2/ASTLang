@@ -17,7 +17,7 @@ class Stack():
 context: dict[str, object] = dict() # Initialize main register
 info = f"""
 DEFAULT MESSAGE FROM IDE:
-'NTMDev ...'
+'NTMDev ...' 
 Note from NTMDev: ASTLang 37 is now unsupported
 ----------------------------------------------------------------------------------------------------------------
 ASTLang for PC, Local based (IDE)
@@ -3984,5 +3984,6 @@ def MAIN():
                 traceback.print_exc()
                 MAIN()
 MAIN()
+
 
 
