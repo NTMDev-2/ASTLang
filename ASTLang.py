@@ -9,7 +9,7 @@ except ModuleNotFoundError:
     print('System exception ; ModuleNotFoundError ; Do you have Python installed correctly?')
     print("Module Error Return Code: [{}] - INTERRUPTED".format(module_return_code))
     exit()
-verno = 'ASTLang 39, Release 1 [BETA]'
+verno = 'ASTLang 39, Release 2 [PRE-RELEASE]'
 pcks = 'traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue'
 class Stack():
     def IsStack(self):
@@ -34,12 +34,13 @@ Subpackages: random.randint, tkinter.messagebox, tkinter.filedialog
 Current Version Stored: {verno}
 
 Currently Known Bugs:
-- No file updating permissions for file I/O commands, through ":[state] FilePath", "no update"
+- No file updating permissions for file I/O commands.
 - Updating dictionaries is currently very buggy
+- When sending HTTP requests, you will get a NoneType warning 
 
-COMING SOON: HTTP requests and potentially web sockets
+COMING SOON: More HTTP requests and potentially web sockets
 
-Added: AugAssignment
+Added: LoadHTTPDriver, SendHTTPRequest, HTTPQueryParameters (unfinished)
 Updated: NewInstance parameter constructor evaluator: fixed "self" evaluation
 ----------------------------------------------------------------------------------------------------------------
 """
@@ -1225,14 +1226,6 @@ class FileWrite(FunctionParent):
         self.Content = Content
         self.Mode = Mode
         self.Encoding = Encoding
-class FileAppend(NodeParent):
-    def __init__(self, FilePath, Content, Encoding=String('utf-8')):
-        self.FilePath = FilePath
-        self.Content = Content
-        self.Encoding = Encoding
-class FileExists(NodeParent):
-    def __init__(self, FilePath):
-        self.FilePath = FilePath
 class FileDelete(NodeParent):
     def __init__(self, FilePath):
         self.FilePath = FilePath
@@ -1425,6 +1418,20 @@ class RangeCheck(NodeParent):
 class ForceStop(IntepreterParent):
     def __init__(self, Reason=String('')):
         self.Reason = Reason
+
+class LoadHTTPDriver(IntepreterParent):
+    def __init__(self, ReturnCode=Boolean('True')):
+        self.ReturnCode = ReturnCode
+class SendHTTPRequest(NodeParent):
+    def __init__(self, Method, URL, Headers=None, Data=None):
+        self.Method = Method
+        self.URL = URL
+        self.Headers = Headers
+        self.Data = Data
+class HTTPQueryParameters(NodeParent):
+    def __init__(self, Params, URL):
+        self.URL = URL
+        self.Params = Params
 primitive = (str, int, float, list, bool, dict, tuple)
 class Evaluate(Stack):
     def evaluate(self, node, context):
@@ -2564,31 +2571,7 @@ class Evaluate(Stack):
             except PermissionError:
                 raise PermissionError(f"Permission denied writing to '{filepath}'")
             except Exception as e:
-                raise Exception(f"Error writing to file '{filepath}': {str(e)}")                
-        elif isinstance(node, FileAppend):
-            filepath = self.evaluate(node.FilePath, context)
-            content = self.evaluate(node.Content, context)
-            encoding = self.evaluate(node.Encoding, context)
-            
-            if not isinstance(filepath, str):
-                raise TypeError("FileAppend FilePath must be a string")
-            if not isinstance(encoding, str):
-                raise TypeError("FileAppend Encoding must be a string")
-                
-            try:
-                with open(filepath, 'a', encoding=encoding) as f:
-                    f.write(str(content))
-                return f"Successfully appended to '{filepath}'"
-            except PermissionError:
-                raise PermissionError(f"Permission denied appending to '{filepath}'")
-            except Exception as e:
-                raise Exception(f"Error appending to file '{filepath}': {str(e)}")                
-        elif isinstance(node, FileExists):
-            filepath = self.evaluate(node.FilePath, context)
-            if not isinstance(filepath, str):
-                raise TypeError("FileExists FilePath must be a string")
-            import os
-            return os.path.exists(filepath)            
+                raise Exception(f"Error writing to file '{filepath}': {str(e)}")                               
         elif isinstance(node, FileDelete):
             filepath = self.evaluate(node.FilePath, context)
             if not isinstance(filepath, str):
@@ -3804,6 +3787,29 @@ class Evaluate(Stack):
             print('\nThis error is usually used as a fallback. If you see this, it means a developer specifically triggered this stop for the reason below:')
             print('Reason: ', self.evaluate(node.Reason, context))
             raise StopIteration('An unavoidable system class error has occured.')
+        elif isinstance(node, LoadHTTPDriver):
+            try:
+                global requests
+                import requests
+                return self.evaluate(node.ReturnCode, context)
+            except ModuleNotFoundError:
+                raise ModuleNotFoundError("The 'requests' module is required for HTTP operations. Install with: pip install requests via cmd")
+        elif isinstance(node, SendHTTPRequest):
+            try:   
+                method = str(self.evaluate(node.Method, context))
+                url = self.evaluate(node.URL, context)
+                headers = self.evaluate(node.Headers, context)
+                data = self.evaluate(node.Data, context)
+
+                if method.upper() in ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']:
+                    response = requests.request(method.upper(), url=url, headers=headers, data=data)
+                else:
+                    raise ValueError("SendHTTPRequest: Unsupported HTTP method")
+                return response.text
+            except ModuleNotFoundError:
+                raise ModuleNotFoundError('No HTTP Driver found')
+        elif isinstance(node, HTTPQueryParameters):
+            print('This function has not yet been developed. Please wait in future updates for this function.')
         else:
             if node is None:
                 print("[WARNING]: Evaluated node is NoneType")
@@ -3837,6 +3843,7 @@ def show_result(output_queue=None, qw=100):
     entry.tag_configure("error", foreground="#FF0000", font=('Consolas', 12, 'bold'))
     entry.tag_configure("success", foreground="#00FF00", font=('Consolas', 12, 'bold'))
     entry.tag_configure("normal", foreground="#FFFFFF", font=('Consolas', 12, 'bold'))
+    entry.tag_configure("warning", foreground="#FFA500", font=('Consolas', 12, 'bold'))
 
     button_frame = tk.Frame(root2)
     button_frame.pack(side='bottom', fill='x', padx=5, pady=5)
@@ -3909,14 +3916,11 @@ def show_evaluate_output(code_content):
         def write(self, text):
             if text:
                 if any(error_keyword in str(text) for error_keyword in 
-                       ["[ERROR]", "ERROR:", "Exception", "Traceback", "Error:", "error:"]):
+                       ["FATAL ERROR AT"]):
                     self.queue.put({'text': text, 'color': 'error'})
                 elif any(warning_keyword in str(text) for warning_keyword in 
                         ["WARNING", "Warning:", "[WARNING]"]):
                     self.queue.put({'text': text, 'color': 'warning'})
-                elif any(info_keyword in str(text) for info_keyword in 
-                        ["Graphics initialized", "DEBUG MODE", "Starting execution"]):
-                    self.queue.put({'text': text, 'color': 'info'})
                 else:
                     self.queue.put({'text': text, 'color': 'normal'})
         
@@ -3960,29 +3964,23 @@ def show_evaluate_output(code_content):
     gui_thread.join()
 def MAIN():
     if main:
-        while True:
-            try:
-                code_content = txteditor_ui() 
-                if runnable and code_content:
-                    show_evaluate_output(code_content)
-                else:
-                    return
-            except tk.Tcl_AsyncDeleteError:
-                pass
-            except NameError:
-                messagebox.showerror('ERROR', 'DID NOT RECIEVE ANY CODE FOR IDE')
-                traceback.print_exc()
-                MAIN()
-            except tk.TclError:
-                messagebox.showerror('ERROR', 'NO CODE OUTPUT, CANNOT DISPLAY')
-                traceback.print_exc()
-                MAIN()
-            except SystemExit:
-                pass
-            except KeyboardInterrupt:
-                pass
-            except:
+        try:
+            code_content = txteditor_ui() 
+            if runnable and code_content:
+                show_evaluate_output(code_content)
+            else:
+                return 1
+        except tk.Tcl_AsyncDeleteError:
+            pass
+        except NameError:
+            messagebox.showerror('ERROR', 'DID NOT RECIEVE ANY CODE FOR IDE')
+            traceback.print_exc()
+            MAIN()
+        except SystemExit:
+            pass
+        except KeyboardInterrupt:
+            pass
+        except:
                 traceback.print_exc()
                 MAIN()
 MAIN()
-
