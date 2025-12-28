@@ -1,17 +1,21 @@
+module_return_code = 0
 try:
     import io, sys, time, traceback, inspect, math, threading, queue
     from tkinter import messagebox
     import tkinter as tk
     from random import randint
+    module_return_code += 1
 except ModuleNotFoundError:
     print('System exception ; ModuleNotFoundError ; Do you have Python installed correctly?')
+    print("Module Error Return Code: [{}] - INTERRUPTED".format(module_return_code))
     exit()
-
+verno = 'ASTLang 39, Release 1 [BETA]'
+pcks = 'traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue'
 class Stack():
     def IsStack(self):
         return __name__ == '__main__'
 context: dict[str, object] = dict() # Initialize main register
-info = """
+info = f"""
 DEFAULT MESSAGE FROM IDE:
 'NTMDev ...'
 Note from NTMDev: ASTLang 35 is now unsupported
@@ -24,20 +28,23 @@ Python 3.12 Build 2025, Version 3.12.0 "NEWEST"
 Designed with GitHub Copilot
 Created by NTMDev (2025)
 
-Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue
+Packages used: {pcks}
+Subpackages: random.randint, tkinter.messagebox, tkinter.filedialog
 
-Current Version Stored: ASTLang 39, Release 1 [BETA]
+Current Version Stored: {verno}
 
 Currently Known Bugs:
 - No file updating permissions for file I/O commands, through ":[state] FilePath", "no update"
+- Updating dictionaries is currently very buggy
 
 Added: AugAssignment
 Updated: NewInstance parameter constructor evaluator: fixed "self" evaluation
 ----------------------------------------------------------------------------------------------------------------
 """
-print(info)
-signature_box = None
 
+print(info)
+print("Module Error Return Code: [{}] - OK".format(module_return_code))
+signature_box = None
 runnable = True
 class IntepreterParent:
     global main
@@ -479,7 +486,7 @@ def txteditor_ui(initial=''):
 
     button_frame = tk.Frame(root)
     button_frame.pack(side='bottom', fill='x', padx=5, pady=5)
-    tk.Button(button_frame, text="RUN ASTLANG PROGRAM", command=submit,
+    tk.Button(button_frame, text="RUN ASTLANG PROGRAM (CTRL+ENTER)", command=submit, background="#000000", foreground="white",
                 font=('Consolas', 12, 'bold')).pack(side='left', fill='x', expand=True, padx=5)
 
     editor_frame = tk.Frame(root)
@@ -689,7 +696,7 @@ def get_user_input(prompt=""):
     root2 = tk.Tk()
     root2.withdraw()
     popup = tk.Toplevel(root2)
-    popup.title("User Input")
+    popup.title("User Input (STDIN CALL)")
     popup.geometry("500x250")
     popup.grab_set()
     popup.focus_set()
@@ -799,6 +806,11 @@ class Round(ValueParent):
     def __init__(self, Flt, DecPoints):
         self.Flt = Flt
         self.DecPoints = DecPoints
+class AugAssignment(NodeParent):
+    def __init__(self, Name, Operator, Value):
+        self.Name = Name
+        self.Operator = Operator
+        self.Value = Value
 
 class Floor(NodeParent):
     def __init__(self, Value):
@@ -1408,12 +1420,9 @@ class RangeCheck(NodeParent):
         self.Max = Max
         self.Inclusive = Inclusive
 
-class AugAssignment(NodeParent):
-    def __init__(self, Name, Operator, Value):
-        self.Name = Name
-        self.Operator = Operator
-        self.Value = Value
-
+class ForceStop(IntepreterParent):
+    def __init__(self, Reason=String('')):
+        self.Reason = Reason
 primitive = (str, int, float, list, bool, dict, tuple)
 class Evaluate(Stack):
     def evaluate(self, node, context):
@@ -3458,7 +3467,6 @@ class Evaluate(Stack):
                         if callable(stage):
                             data = stage(data)
                         elif isinstance(stage, str):
-                            # Handle ASTLang function names
                             func_def = context.get(stage)
                             if isinstance(func_def, DefineFunction):
                                 local_context = context.copy()
@@ -3475,7 +3483,6 @@ class Evaluate(Stack):
                             else:
                                 raise NameError(f"Pipeline stage {i+1}: Function '{stage}' not found")
                         else:
-                            # Handle built-in transformations
                             if hasattr(stage, 'evaluate'):
                                 data = self.evaluate(stage, context)
                             else:
@@ -3789,6 +3796,12 @@ class Evaluate(Stack):
                 raise ValueError("AugAssignment requires a valid mathematical operator")
             context[name] = evaluated_value
             return None
+        elif isinstance(node, ForceStop):
+            print('An unexpected stop code was detected and is unavoidable unless caught.')
+            print('Code cannot return to proper use without loss of session.')
+            print('\nThis error is usually used as a fallback. If you see this, it means a developer specifically triggered this stop for the reason below:')
+            print('Reason: ', self.evaluate(node.Reason, context))
+            raise StopIteration('An unavoidable system class error has occured.')
         else:
             if node is None:
                 print("[WARNING]: Evaluated node is NoneType")
@@ -3943,32 +3956,30 @@ def show_evaluate_output(code_content):
     execution_thread.start()
     execution_thread.join()
     gui_thread.join()
-ran = False
 def MAIN():
     if main:
-        try:
-            code_content = txteditor_ui() 
-            if runnable and code_content:
-                show_evaluate_output(code_content)
-            else:
-                return
-        except tk.Tcl_AsyncDeleteError:
-            pass
-        except NameError:
-            messagebox.showerror('ERROR', 'DID NOT RECIEVE ANY CODE FOR IDE')
-            traceback.print_exc()
-            MAIN()
-        except tk.TclError:
-            messagebox.showerror('ERROR', 'NO CODE OUTPUT, CANNOT DISPLAY')
-            traceback.print_exc()
-            MAIN()
-        except SystemExit:
-            pass
-        except KeyboardInterrupt:
-            pass
-        except:
-            traceback.print_exc()
-            MAIN()
-if not ran:
-    MAIN()
-    ran = True
+        while True:
+            try:
+                code_content = txteditor_ui() 
+                if runnable and code_content:
+                    show_evaluate_output(code_content)
+                else:
+                    return
+            except tk.Tcl_AsyncDeleteError:
+                pass
+            except NameError:
+                messagebox.showerror('ERROR', 'DID NOT RECIEVE ANY CODE FOR IDE')
+                traceback.print_exc()
+                MAIN()
+            except tk.TclError:
+                messagebox.showerror('ERROR', 'NO CODE OUTPUT, CANNOT DISPLAY')
+                traceback.print_exc()
+                MAIN()
+            except SystemExit:
+                pass
+            except KeyboardInterrupt:
+                pass
+            except:
+                traceback.print_exc()
+                MAIN()
+MAIN()
