@@ -10,7 +10,7 @@ except ModuleNotFoundError:
     print("Module Error Return Code: [{}] - INTERRUPTED".format(module_return_code))
     exit()
 verno = 'ASTLang 39, Release 2 [PRE-RELEASE]'
-pcks = 'traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue'
+pcks = 'traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue, requests (pip)'
 class Stack():
     def IsStack(self):
         return __name__ == '__main__'
@@ -3984,3 +3984,4 @@ def MAIN():
                 traceback.print_exc()
                 MAIN()
 MAIN()
+
