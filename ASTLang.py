@@ -18,7 +18,7 @@ context: dict[str, object] = dict() # Initialize main register
 info = f"""
 DEFAULT MESSAGE FROM IDE:
 'NTMDev ...'
-Note from NTMDev: ASTLang 35 is now unsupported
+Note from NTMDev: ASTLang 37 is now unsupported
 ----------------------------------------------------------------------------------------------------------------
 ASTLang for PC, Local based (IDE)
 Supports IDE usuage and file saving with .astlang
@@ -3984,4 +3984,5 @@ def MAIN():
                 traceback.print_exc()
                 MAIN()
 MAIN()
+
 
