@@ -11,19 +11,20 @@ except ModuleNotFoundError:
     exit()
 verno = 'ASTLang 39, Release 2 [PRE-RELEASE]'
 pcks = 'traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue, requests (pip)'
-class Stack():
+defname = '__main__'
+class Stack(Exception):
     def IsStack(self):
         return __name__ == '__main__'
 context: dict[str, object] = dict() # Initialize main register
 info = f"""
 DEFAULT MESSAGE FROM IDE:
-'NTMDev ...' 
+'NTMDev ...'
 Note from NTMDev: ASTLang 37 is now unsupported
 ----------------------------------------------------------------------------------------------------------------
 ASTLang for PC, Local based (IDE)
 Supports IDE usuage and file saving with .astlang
 
-Python 3.12 Build 2025, Version 3.12.0 "NEWEST"
+Python 3.12 Build 2025, Version 3.12.0 "NEWEST", {defname}
 
 Designed with GitHub Copilot
 Created by NTMDev (2025)
@@ -3138,21 +3139,6 @@ class Evaluate(Stack):
             context[name] = custom_exception
             
             return f"Custom error '{name}' created"
-
-            try:
-                import pygame
-            except ImportError:
-                raise ImportError("pygame is required for graphics functions. Install with: pip install pygame")
-            filepath = self.evaluate(node.FilePath, context)
-            volume = self.evaluate(node.Volume, context)
-            
-            try:
-                sound = pygame.mixer.Sound(filepath)
-                sound.set_volume(volume)
-                sound.play()
-                return f"Sound '{filepath}' played"
-            except pygame.error as e:
-                raise Exception(f"Could not play sound '{filepath}': {str(e)}")
         elif isinstance(node, InspectCode):
             import sys
             obj = self.evaluate(node.Object, context)
@@ -3827,7 +3813,7 @@ E = Evaluate()
 def show_result(output_queue=None, qw=100):
     global entry
     root2 = tk.Tk()
-    root2.title('ASTLANG OUTPUT - REAL TIME')
+    root2.title('ASTLANG OUTPUT')
     root2.geometry('1000x600')
 
     output_label = tk.Label(root2, text='OUTPUT:', font=('Consolas', 12,'italic bold'), width=20, justify='left')
@@ -3916,7 +3902,7 @@ def show_evaluate_output(code_content):
         def write(self, text):
             if text:
                 if any(error_keyword in str(text) for error_keyword in 
-                       ["FATAL ERROR AT"]):
+                       ["FATAL ERROR AT", "[ERROR]", "Traceback (most recent call last):"]):
                     self.queue.put({'text': text, 'color': 'error'})
                 elif any(warning_keyword in str(text) for warning_keyword in 
                         ["WARNING", "Warning:", "[WARNING]"]):
@@ -3984,6 +3970,3 @@ def MAIN():
                 traceback.print_exc()
                 MAIN()
 MAIN()
-
-
-
