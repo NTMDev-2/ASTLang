@@ -3779,8 +3779,8 @@ class Evaluate(Stack):
                 global requests
                 import requests
                 return self.evaluate(node.ReturnCode, context)
-            except ModuleNotFoundError:
-                raise ModuleNotFoundError("The 'requests' module is required for HTTP operations. Install with: pip install requests via cmd")
+            except ModuleNotFoundError as e:
+                raise ModuleNotFoundError(f"UNEXPECTED_COMPILER_EXIT: UNEXPECTED_HTTP_DRIVER_REQUEST_CALL: BAD_MODULE_REQUEST: MISSING_DEPENDENCY: Could not obtain necessary dependency 'requests' EXIT: {hex(id(e))}")
         elif isinstance(node, SendHTTPRequest):
             try:   
                 method = str(self.evaluate(node.Method, context))
@@ -3814,10 +3814,7 @@ class Evaluate(Stack):
             else:
                 global runnable
                 runnable = False
-                print(f"[ERROR]: Unsupported node type: {type(node)}")
-                print(f"[ERROR]: Node value: {node}")
-                print(f"[ERROR]: Node repr: {repr(node)}")
-                raise TypeError(f"Unsupported AST node type: {type(node)}")
+                raise TypeError(f"UNEXPECTED_TOKEN: UNEXPECTED_VARIABLE_TYPE_USAGE: MISSING_{type(node)}")
 E = Evaluate()
 def show_result(output_queue=None, qw=100):
     global entry
