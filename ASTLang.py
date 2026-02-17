@@ -1,40 +1,59 @@
-import io, sys, time, traceback, inspect, math
-from tkinter import messagebox
-import tkinter as tk
-from random import randint
-context: dict[str, object] = dict()
-
-info = """
+module_return_code = 0
+try:
+    import io, sys, time, inspect, math, threading, queue
+    from tkinter import messagebox
+    import tkinter as tk
+    from random import randint
+    module_return_code += 1
+except ModuleNotFoundError:
+    print('System exception ; ModuleNotFoundError ; Do you have Python installed correctly?')
+    print("Module Error Return Code: [{}] - INTERRUPTED".format(module_return_code))
+    exit()
+verno = 'ASTLang 40, Release 1 [FINAL]'
+pcks = 'traceback (deprecated), random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue, requests (pip)'
+class Stack(Exception):
+    def IsSelf(self):
+        return __name__ == '__main__'
+    def __str__(self):
+        return f'UNEXPECTED_COMPILER_EXIT: {hex(id(Exception))}\nNote: Unintended for external use'
+Compiler = Stack()
+if not Compiler.IsSelf():
+    messagebox.showerror('ASTLANG','UNRESOLVED_COMPILER_IMPORT_REFERENCE_CALL (EXTERNAL): This package does not support external use.')
+    raise Stack()
+context: dict[str, object] = dict() # Initialize main register
+info = f"""
 DEFAULT MESSAGE FROM IDE:
 'NTMDev ...'
-Note from NTMDev: ASTLang 25 is now unsupported
+Note from NTMDev: ASTLang 37 is now unsupported
 ----------------------------------------------------------------------------------------------------------------
 ASTLang for PC, Local based (IDE)
 Supports IDE usuage and file saving with .astlang
 
+Python 3.12 Build 2025, Version 3.14.0 "NEWEST"
+
 Designed with GitHub Copilot
 Created by NTMDev (2025)
 
-Packages used: traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math
+Packages used: {pcks}
+Subpackages: random.randint, tkinter.messagebox, tkinter.filedialog
 
-Current Version Stored: ASTLang 28, Release 1 [FINAL-DEVELOPMENT]
+Current Version Stored: {verno}
 
 Currently Known Bugs:
-- None
+- No file updating permissions for file I/O commands.
+- Updating dictionaries is currently very buggy
+- When sending HTTP requests, you will get a NoneType warning 
 
-Functions (COMING SOON): FileOperation(), FileEdit()
+COMING SOON: More HTTP requests and potentially web sockets
 
-Adding: 
-- superclass inheritance (coming ASTLang 27)
-- File I/O operations (coming ASTLang 27)
-
-Added: Clamp(), DeepCopy(), HashValue(), Ord(), Chr(), BaseConvert()
-Updated: Fixed signature box hiding behavior (when window unfocused box is hidden)
+Added: Descriptive error messages, in a windows BSOD format
+Updated: Removed redundant functions taking up compiler space. Also, revised Stack class to protect against external use with IsSelf()
 ----------------------------------------------------------------------------------------------------------------
 """
-print(info)
-signature_box = None
 
+print(info)
+print("Module Error Return Code: [{}] - OK".format(module_return_code))
+signature_box = None
 runnable = True
 class IntepreterParent:
     global main
@@ -71,14 +90,14 @@ def txteditor_ui(initial=''):
     autocomplete_box = None
 
     def submit(event=None):
-        global content
+        nonlocal content
         raw_text = code_text.get("1.0", tk.END).strip()
         try:
             content = eval(raw_text, globals())
         except Exception as e:
             print(f"Error: {e}")
+            content = None
         root.destroy()
-
     def update_line_numbers(event=None):
         try:
             if not code_text.winfo_exists():
@@ -93,7 +112,6 @@ def txteditor_ui(initial=''):
                 line_numbers.yview_moveto(code_text.yview()[0])
         except tk.TclError:
             pass
-
     def on_scroll(*args):
         if args[0] in ("moveto", "scroll"):
             code_text.yview(*args)
@@ -101,17 +119,13 @@ def txteditor_ui(initial=''):
         else:
             code_text.yview("moveto", args[0])
             line_numbers.yview("moveto", args[0])
-
-
     def get_all_exceptions(base=Exception):
         result = []
         for cls in base.__subclasses__():
             result.append(cls.__name__)
             result.extend(get_all_exceptions(cls))
         return result
-
     EXCEPTIONS = get_all_exceptions()
-
     def highlight(event=None):
         KEYWORDS = get_keywords()
         FUNCS = get_systemfuncs()
@@ -275,6 +289,12 @@ def txteditor_ui(initial=''):
             finally:
                 autocomplete_box = None
                 listbox = None
+        
+        try:
+            code_text.bind("<Down>", lambda e: "break")
+            code_text.bind("<Up>", lambda e: "break")
+        except:
+            pass
 
     def hide_signature():
         global signature_box
@@ -289,10 +309,26 @@ def txteditor_ui(initial=''):
     def get_signature(name):
         try:
             obj = eval(name, globals())
-            sig = str(inspect.signature(obj))
-            return f"{name}{sig}"
-        except Exception:
-            return None
+            sig = inspect.signature(obj)
+            
+            params = []
+            for param_name, param in sig.parameters.items():
+                if param.default == inspect.Parameter.empty:
+                    params.append(param_name)
+                else:
+                    if hasattr(param.default, '__class__') and hasattr(param.default.__class__, '__name__'):
+                        if param.default.__class__.__name__ == 'ObjNONE':
+                            default_name = "[None]"
+                        else:
+                            default_name = repr(param.default)
+                    else:
+                        default_name = repr(param.default)
+                    params.append(f"{param_name}={default_name}")
+            
+            result = f"{name}({', '.join(params)})"
+            return result
+        except Exception as e:
+            return f"{name}(...)"
     def show_autocomplete(suggestions):
         nonlocal autocomplete_box, listbox
         hide_autocomplete()
@@ -310,7 +346,9 @@ def txteditor_ui(initial=''):
         listbox = tk.Listbox(
             autocomplete_box,
             height=min(len(suggestions), 6),
-            font=('Consolas', 12)
+            font=('Consolas', 12),
+            bg="#363636",
+            fg="#00EEFF",
         )
         listbox.pack()
 
@@ -451,32 +489,36 @@ def txteditor_ui(initial=''):
 
         hide_signature()
 
-
     root = tk.Tk()
     root.title('ASTLang IDE')
     root.geometry('800x700')
 
     button_frame = tk.Frame(root)
     button_frame.pack(side='bottom', fill='x', padx=5, pady=5)
-    tk.Button(button_frame, text="RUN ASTLANG PROGRAM", command=submit,
-              font=('Consolas', 12, 'bold')).pack(side='left', fill='x', expand=True, padx=5)
+    tk.Button(button_frame, text="RUN ASTLANG PROGRAM (CTRL+ENTER)", command=submit, background="#000000", foreground="white",
+                font=('Consolas', 12, 'bold')).pack(side='left', fill='x', expand=True, padx=5)
 
     editor_frame = tk.Frame(root)
     editor_frame.pack(expand=True, fill='both')
-
     scrollbar = tk.Scrollbar(editor_frame)
     scrollbar.pack(side='right', fill='y')
-
     line_numbers = tk.Text(
-        editor_frame, width=4, padx=3, takefocus=0, border=0,
-        background='lightgray', state='disabled', font=('Consolas', 12, 'bold'),
-        yscrollcommand=on_scroll
-    )
+    editor_frame, width=4, padx=3, takefocus=0, border=0,
+            background='lightgray', state='disabled', font=('Consolas', 12, 'bold'),
+            yscrollcommand=on_scroll
+        )
     line_numbers.pack(side='left', fill='y')
 
     code_text = tk.Text(editor_frame, font=('Consolas', 12),
-                        yscrollcommand=on_scroll, background="#1E1E1E", foreground="#D4D4D4",
-                        insertbackground="white", wrap='none')
+                            yscrollcommand=on_scroll, background="#1E1E1E", foreground="#D4D4D4",
+                            insertbackground="white", wrap='none')
+    code_text.config(
+            insertwidth=float(2.5), 
+            insertofftime=300, 
+            insertontime=600, 
+            insertbackground="#FFFFFF", 
+            insertborderwidth=1
+        )
     code_text.pack(expand=True, fill='both')
     code_text.insert(tk.END, initial)
     scrollbar.config(command=on_scroll)
@@ -646,7 +688,7 @@ def txteditor_ui(initial=''):
         code_text.insert("1.0", code_as_text)
         current_file = filename
 
-
+    content = ''
 
     code_text.bind("<Control-o>", lambda e: open_file(e))
     code_text.bind("<Control-s>", lambda e: save_file(e))
@@ -662,20 +704,56 @@ def get_user_input(prompt=""):
     result = {"value": None}
     root2 = tk.Tk()
     root2.withdraw()
-    popup = tk.Toplevel()
-    popup.title("User Input")
-    popup.geometry("400x200")
-    popup.grab_set() 
-    if prompt:
-        tk.Label(popup, text=prompt, font=("Consolas", 12)).pack(pady=5)
-    text_widget = tk.Text(popup, height=5, font=("Consolas", 12))
-    text_widget.pack(expand=True, fill="both", padx=5, pady=5)
+    popup = tk.Toplevel(root2)
+    popup.title("User Input (STDIN CALL)")
+    popup.geometry("500x250")
+    popup.grab_set()
+    popup.focus_set()
+    
+    prompt_text = prompt if prompt else "Enter input:"
+    prompt_label = tk.Label(popup, text=prompt_text, font=("Consolas", 12, "bold"), 
+                           wraplength=450, justify="left")
+    prompt_label.pack(pady=(10, 5), padx=10, fill="x")
+    
+    text_widget = tk.Text(popup, height=5, font=("Consolas", 12),
+                         bg="#2d2d2d", fg="#ffffff", insertbackground="#ffffff")
+    text_widget.pack(expand=True, fill="both", padx=10, pady=5)
+    text_widget.focus_set()
+    
     def submit():
-        result["value"] = text_widget.get("1.0", "end-1c") 
+        result["value"] = text_widget.get("1.0", "end-1c")
         popup.destroy()
         root2.destroy()
-    submit_btn = tk.Button(popup, text="Submit", command=submit, font=("Consolas", 12))
-    submit_btn.pack(pady=5)
+    
+    def on_enter(event=None):
+        if event and event.state & 0x4:
+            submit()
+        return "break"
+    
+    # Button frame
+    button_frame = tk.Frame(popup)
+    button_frame.pack(side="bottom", fill="x", padx=10, pady=5)
+    
+    submit_btn = tk.Button(button_frame, text="Submit (Ctrl+Enter)", command=submit, 
+                          font=("Consolas", 11, "bold"), bg="#4CAF50", fg="white")
+    submit_btn.pack(side="right", padx=5)
+    
+    def cancel_action():
+        result["value"] = "" 
+        popup.destroy()
+        root2.destroy()
+
+    cancel_btn = tk.Button(button_frame, text="Cancel", command=cancel_action,
+                        font=("Consolas", 11), bg="#f44336", fg="white")
+    cancel_btn.pack(side="right")
+    
+    text_widget.bind("<Control-Return>", on_enter)
+    popup.bind("<Escape>", lambda e: (setattr(result, 'value', ""), popup.destroy(), root2.destroy()))
+    popup.update_idletasks()
+    x = (popup.winfo_screenwidth() // 2) - (popup.winfo_width() // 2)
+    y = (popup.winfo_screenheight() // 2) - (popup.winfo_height() // 2)
+    popup.geometry(f"+{x}+{y}")
+    
     popup.wait_window() 
     return result["value"]
 
@@ -737,6 +815,11 @@ class Round(ValueParent):
     def __init__(self, Flt, DecPoints):
         self.Flt = Flt
         self.DecPoints = DecPoints
+class AugAssignment(NodeParent):
+    def __init__(self, Name, Operator, Value):
+        self.Name = Name
+        self.Operator = Operator
+        self.Value = Value
 
 class Floor(NodeParent):
     def __init__(self, Value):
@@ -781,6 +864,24 @@ class Mod(NodeParent):
 class MathConstants(NodeParent):
     def __init__(self, Constant):
         self.Constant = Constant
+
+class Lambda(NodeParent):
+    def __init__(self, Parameters, Body):
+        self.Parameters = Parameters
+        self.Body = Body
+class MapFunction(FunctionParent):
+    def __init__(self, Function, Iterable):
+        self.Function = Function
+        self.Iterable = Iterable
+class FilterFunction(FunctionParent):
+    def __init__(self, Function, Iterable):
+        self.Function = Function
+        self.Iterable = Iterable     
+class ReduceFunction(FunctionParent):
+    def __init__(self, Function, Iterable, InitialValue=ObjNONE()):
+        self.Function = Function
+        self.Iterable = Iterable
+        self.InitialValue = InitialValue 
 
 class ListAssignment(ValueParent):
     def __init__(self, *LstElements):
@@ -831,7 +932,7 @@ class InitVariable(NodeParent):
     def __init__(self, Name):
         self.Name = Name
 
-class FuncCall(FunctionParent): #Simple Function Call
+class FuncCall(IntepreterParent): #Simple Function Call
     def __init__(self, Function):
         self.Function = Function
 class Print(FunctionParent):
@@ -1010,12 +1111,12 @@ class StringReplace(NodeParent):
         self.OldSubstring = OldSubstring
         self.NewSubstring = NewSubstring
 class FormattedString(NodeParent):
-    def __init__(self, FormatString, *Args):
+    def __init__(self, FormatString, Args=ListAssignment()):
         self.FormatString = FormatString
         self.Args = Args
 
 class Slice(NodeParent):
-    def __init__(self, Var, Start=ObjNONE(), End=ObjNONE(), Step=ObjNONE()):
+    def __init__(self, Var, Start=ObjNONE(), End=ObjNONE(), Step=Integer(1)):
         self.Var = Var
         self.Start = Start 
         self.End = End  
@@ -1041,11 +1142,11 @@ class IsType(NodeParent):
         self.Value = Value
         self.Type = Type
 class ErrorCatch(IntepreterParent):
-    def __init__(self, CatchedException, TryBody, ExceptBody, FinallyBody=ObjNONE()):
+    def __init__(self, CatchedException, TryBody, ExceptBody, DefaultBody=ObjNONE()):
         self.CatchedException = CatchedException
         self.TryBody = TryBody
         self.ExceptBody = ExceptBody
-        self.FinallyBody = FinallyBody
+        self.DefaultBody = DefaultBody
 class Raise(NodeParent):
     def __init__(self, ErrorName, ErrorText=String('')):
         self.ErrorName = ErrorName
@@ -1098,6 +1199,21 @@ class MethodCall(FunctionParent):
         self.MethodName = MethodName
         self.Args = Args
 
+class SuperClass(NodeParent):
+    def __init__(self, ChildClassName, ParentClassName, Methods=ListAssignment(), Properties=ListAssignment()):
+        self.ChildClassName = ChildClassName
+        self.ParentClassName = ParentClassName 
+        self.Methods = Methods 
+        self.Properties = Properties  
+class Super(NodeParent):
+    def __init__(self, MethodName, Args=ListAssignment()):
+        self.MethodName = MethodName  
+        self.Args = Args
+class IsInstanceOf(NodeParent):
+    def __init__(self, Object, ClassName):
+        self.Object = Object
+        self.ClassName = ClassName
+
 class Ord(NodeParent):
     def __init__(self, Str):
         self.Str = Str
@@ -1105,12 +1221,233 @@ class Chr(NodeParent):
     def __init__(self, Str):
         self.Str = Str
 
+class FileRead(FunctionParent):
+    def __init__(self, FilePath, Mode=String('r'), Encoding=String('utf-8')):
+        self.FilePath = FilePath
+        self.Mode = Mode
+        self.Encoding = Encoding
+class FileWrite(FunctionParent):
+    def __init__(self, FilePath, Content, Mode=String('w'), Encoding=String('utf-8')):
+        self.FilePath = FilePath
+        self.Content = Content
+        self.Mode = Mode
+        self.Encoding = Encoding
+class FileDelete(NodeParent):
+    def __init__(self, FilePath):
+        self.FilePath = FilePath
+class FileSize(ValueParent):
+    def __init__(self, FilePath):
+        self.FilePath = FilePath
+class ListFiles(IntepreterParent):
+    def __init__(self, DirectoryPath, Pattern=String('*')):
+        self.DirectoryPath = DirectoryPath
+        self.Pattern = Pattern
+
+class EvalExpression(IntepreterParent):
+    def __init__(self, Expression, Globals=ObjNONE(), Locals=ObjNONE()):
+        self.Expression = Expression
+        self.Globals = Globals
+        self.Locals = Locals
+class ExecCode(IntepreterParent):
+    def __init__(self, Code, Globals=ObjNONE(), Locals=ObjNONE()):
+        self.Code = Code
+        self.Globals = Globals
+        self.Locals = Locals
+class CallFunction(FunctionParent):
+    def __init__(self, FunctionName, Args=ListAssignment(), Kwargs=DictionaryAssign([])):
+        self.FunctionName = FunctionName
+        self.Args = Args
+        self.Kwargs = Kwargs
+class Sort(NodeParent):
+    def __init__(self, List, Reverse=Boolean('False'), Key=ObjNONE()):
+        self.List = List
+        self.Reverse = Reverse
+        self.Key = Key
+class Zip(FunctionParent):
+    def __init__(self, *Lists):
+        self.Lists = Lists
+class Shuffle(NodeParent):
+    def __init__(self, List):
+        self.List = List
+class Sample(NodeParent):
+    def __init__(self, List, Count):
+        self.List = List
+        self.Count = Count
+class Flatten(NodeParent):
+    def __init__(self, List, Depth=Integer(1)):
+        self.List = List
+        self.Depth = Depth
+
+class SetAssignment(ValueParent):
+    def __init__(self, *Elements):
+        self.Elements = Elements
+class SetOperations(NodeParent):
+    def __init__(self, Set1, Set2, Operation):
+        self.Set1 = Set1
+        self.Set2 = Set2
+        self.Operation = Operation 
+class SetMethods(NodeParent):
+    def __init__(self, SetVar, Method, Element=ObjNONE()):
+        self.SetVar = SetVar
+        self.Method = Method
+        self.Element = Element
+class SetContains(NodeParent):
+    def __init__(self, Set, Element):
+        self.Set = Set
+        self.Element = Element
+class Split(FunctionParent):
+    def __init__(self, Val, Delimiter):
+        self.Val = Val
+        self.Delimiter = Delimiter
+
+class DateTime(NodeParent):
+    def __init__(self, Year=ObjNONE(), Month=ObjNONE(), Day=ObjNONE(), Hour=Integer(0), Minute=Integer(0), Second=Integer(0)):
+        self.Year = Year
+        self.Month = Month
+        self.Day = Day
+        self.Hour = Hour
+        self.Minute = Minute
+        self.Second = Second
+class DateTimeNow(NodeParent):
+    def __init__(self):
+        pass
+
+class WarningRaise(NodeParent):
+    def __init__(self, Message, Category=String('UserWarning')):
+        self.Message = Message
+        self.Category = Category
+class CustomError(NodeParent):
+    def __init__(self, Name, BaseError=String('Exception')):
+        self.Name = Name
+        self.BaseError = BaseError
+
+class Statistics(NodeParent):
+    def __init__(self, Data, Operation):
+        self.Data = Data
+        self.Operation = Operation 
+class LinearAlgebra(NodeParent):
+    def __init__(self, Matrix1, Matrix2=ObjNONE(), Operation=String('transpose')):
+        self.Matrix1 = Matrix1
+        self.Matrix2 = Matrix2
+        self.Operation = Operation
+class Matrix(ValueParent):
+    def __init__(self, Rows):
+        self.Rows = Rows
+class Percentile(NodeParent):
+    def __init__(self, Data, Percentage):
+        self.Data = Data
+        self.Percentage = Percentage
+class StandardScore(NodeParent):
+    def __init__(self, Value, Mean, StdDev):
+        self.Value = Value
+        self.Mean = Mean
+        self.StdDev = StdDev
+class Regression(NodeParent):
+    def __init__(self, XData, YData, Type=String('linear')):
+        self.XData = XData
+        self.YData = YData
+        self.Type = Type
+class Calculate(ValueParent):
+    def __init__(self, Expression):
+        self.Expression = Expression
+
+class InspectCode(IntepreterParent):
+    def __init__(self, Object, Property=String('type')):
+        self.Object = Object
+        self.Property = Property
+class Debugger(IntepreterParent):
+    def __init__(self, Code, Breakpoints=ListAssignment()):
+        self.Code = Code
+        self.Breakpoints = Breakpoints
+class StackTrace(IntepreterParent):
+    def __init__(self, Depth=Integer(10)):
+        self.Depth = Depth
+
+class DataStream(NodeParent):
+    def __init__(self, Source, BufferSize=Integer(1024)):
+        self.Source = Source
+        self.BufferSize = BufferSize
+class StreamProcessor(NodeParent):
+    def __init__(self, Stream, ProcessFunction, WindowSize=Integer(10)):
+        self.Stream = Stream
+        self.ProcessFunction = ProcessFunction
+        self.WindowSize = WindowSize
+class Pipeline(NodeParent):
+    def __init__(self, Stages):
+        self.Stages = Stages
+
+class ArrayUtils(ValueParent):
+    def __init__(self, Array, Operation, *Args):
+        self.Array = Array
+        self.Operation = Operation
+        self.Args = Args
+class Find(NodeParent):
+    def __init__(self, Collection, Predicate, Mode=String('first')):
+        self.Collection = Collection
+        self.Predicate = Predicate
+        self.Mode = Mode
+class GroupBy(NodeParent):
+    def __init__(self, Collection, KeyFunction):
+        self.Collection = Collection
+        self.KeyFunction = KeyFunction
+class Partition(FunctionParent):
+    def __init__(self, Collection, Predicate):
+        self.Collection = Collection
+        self.Predicate = Predicate
+class Frequency(NodeParent):
+    def __init__(self, Collection):
+        self.Collection = Collection
+
+class Assert(IntepreterParent):
+    def __init__(self, Condition, Message=String('Assertion')):
+        self.Condition = Condition
+        self.Message = Message
+class SafeCast(NodeParent):
+    def __init__(self, Value, TargetType, DefaultValue=ObjNONE()):
+        self.Value = Value
+        self.TargetType = TargetType
+        self.DefaultValue = DefaultValue
+class RangeCheck(NodeParent):
+    def __init__(self, Value, Min=ObjNONE(), Max=ObjNONE(), Inclusive=Boolean('True')):
+        self.Value = Value
+        self.Min = Min
+        self.Max = Max
+        self.Inclusive = Inclusive
+
+class ForceStop(IntepreterParent):
+    def __init__(self, Reason=String('')):
+        self.Reason = Reason
+class RetrieveFromMemory(IntepreterParent):
+    def __init__(self, Key):
+        self.Key = Key
+
+class LoadHTTPDriver(IntepreterParent):
+    def __init__(self, ReturnCode=Boolean('True')):
+        self.ReturnCode = ReturnCode
+class SendHTTPRequest(NodeParent):
+    def __init__(self, Method, URL, Headers=None, Data=None):
+        self.Method = Method
+        self.URL = URL
+        self.Headers = Headers
+        self.Data = Data
+class HTTPQueryParameters(NodeParent):
+    def __init__(self, Params, URL):
+        self.URL = URL
+        self.Params = Params
 primitive = (str, int, float, list, bool, dict, tuple)
-class Evaluate():
+class Evaluate(Stack):
     def evaluate(self, node, context):
         if isinstance(node, Exit):
             code = self.evaluate(node.Code, context)
+            print(f"\n[IDE EXIT WITH CODE {code}]\n")
+            import tkinter as tk
+            for widget in tk._default_root.winfo_children():
+                if isinstance(widget, tk.Toplevel):
+                    widget.destroy()
+            tk._default_root.quit()
             sys.exit(code)
+        elif isinstance(node, type(...)):
+            return None
         elif isinstance(node, type):
             print('[ERROR] Did not recieve arguments for function')
             return
@@ -1125,26 +1462,35 @@ class Evaluate():
         elif isinstance(node, CastToValue):
             if isinstance(node.Var, Variable): 
                 varname = node.Var.Name
+            elif not isinstance(node.Var, Variable):
+                varname = self.evaluate(node.Var, context)
             else: 
-                raise Exception("CastToValue requires a Variable node")
+                raise Exception("CastToValue requires a valid node")
             value = self.evaluate(node.Var, context)
-            if node.CastVal == 'str': 
-                casted = str(value)
-            elif node.CastVal == 'int': 
-                casted = int(value)
-            elif node.CastVal == 'list': 
-                casted = list(value)
-            else: 
-                raise Exception(f"Unsupported cast: {node.CastVal}")
+            match node.CastVal:
+                case 'str':
+                    casted = str(value)
+                case 'int':
+                    casted = int(value)
+                case 'list':
+                    casted = list(value)
+                case 'tuple':
+                    casted = tuple(value)
+                case _: 
+                    raise Exception(f"Unsupported cast: {node.CastVal}")
             
             context[varname] = casted
             return casted
         elif isinstance(node, Integer):
             if isinstance(node.Int, int):
+                if node.Int >= 2**32:
+                    raise OverflowError("Integer too large, expected 2^32")
                 return node.Int
             return int(self.evaluate(node.Int, context))
         elif isinstance(node, Float):
             if isinstance(node.Flt, float):
+                if node.Flt >= float(2^32):
+                    raise OverflowError("Float too large, expected 2^32") 
                 return node.Flt
             return float(self.evaluate(node.Flt, context))
         elif isinstance(node, Boolean):
@@ -1166,17 +1512,46 @@ class Evaluate():
             l = self.evaluate(node.ListName, context)
             i = self.evaluate(node.Index, context)
             return l[i]
+        elif isinstance(node, FuncCall):
+            if isinstance(node.Function, Print):
+                contents = node.Function.Contents
+                value = self.evaluate(contents, context)
+    
+                if str(value) == "Are you mad? That's a 12-year-old scotch!":
+                    raise MemoryError('we opened it yesterday (Reference: Day After Tomorrow)')
+                end_param = node.Function.End
+                if isinstance(end_param, PrimitiveWrapper):
+                    end_val = end_param.V
+                else:
+                    end_val = self.evaluate(end_param, context)
+                
+                if isinstance(value, str) and value in context:
+                    print(context[value], end=end_val)
+                else:
+                    print(value, end=end_val)
+                return None
         elif isinstance(node, ListEdit):
             mode = node.EditType
             valid_modes = {'append', 'del', 'clear', 'sort', 'pop', 'reverse'}
             if mode not in valid_modes:
                 raise ValueError(f"Unsupported ListEdit mode: {mode}")
-            list_name = self.evaluate(node.Name, context)
-            if not isinstance(list_name, str):
-                raise TypeError(f"ListEdit Name must evaluate to a string, got {type(list_name)}")
-            if list_name not in context:
-                raise NameError(f"List '{list_name}' is not defined in context")
-            c = list(context.get(list_name))
+            
+            if isinstance(node.Name, str):
+                list_name = node.Name
+                if list_name not in context:
+                    raise NameError(f"List '{list_name}' is not defined in context")
+                c = context.get(list_name)
+            elif hasattr(node.Name, 'Name'):
+                list_name = node.Name.Name
+                if list_name not in context:
+                    raise NameError(f"List '{list_name}' is not defined in context")
+                c = context.get(list_name)
+            else:
+                c = self.evaluate(node.Name, context)
+            
+            if not isinstance(c, list):
+                raise TypeError(f"ListEdit requires a list, got {type(c)}")
+            
             if mode == 'append':
                 apnd = self.evaluate(node.AppendVal, context)
                 c.append(apnd)
@@ -1187,21 +1562,24 @@ class Evaluate():
                         c.remove(Del)
                 elif node.DelIndex:
                     delIndex = self.evaluate(node.DelIndex, context)
-                    if delIndex in range(0, len(c)):
+                    if 0 <= delIndex < len(c):
                         del c[delIndex]
             elif mode == 'clear':
                 c.clear()
             elif mode == 'sort':
-                c.sort(reverse=node.ReversedSort)
+                c.sort(reverse=self.evaluate(node.ReversedSort, context))
             elif mode == 'pop':
                 popi = self.evaluate(node.PopIndex, context)
-                if popi in range(0, len(c)):
+                if 0 <= popi < len(c):
                     popped = c.pop(popi)
-                    context[list_name] = c 
+                    if list_name:
+                        context[list_name] = c 
                     return popped
             elif mode == 'reverse':
                 c.reverse()
-            context[list_name] = c
+            if list_name:
+                context[list_name] = c
+            
             return c
         elif isinstance(node, Range):
             bmin = self.evaluate(node.BoundMin, context)
@@ -1239,38 +1617,44 @@ class Evaluate():
             if isinstance(node.Function, Print):
                 contents = node.Function.Contents
                 value = self.evaluate(contents, context)
-                  
-                end_val = node.Function.End
-                end_val = self.evaluate(end_val, context) if not isinstance(end_val, primitive) else end_val
+                
+                if isinstance(node.Function.End, PrimitiveWrapper):
+                    end_val = node.Function.End.V
+                else:
+                    end_val = self.evaluate(node.Function.End, context)
+                
                 if isinstance(value, str) and value in context:
                     print(context[value], end=end_val)
                 else:
-                  print(value, end=end_val)
+                    print(value, end=end_val)
                 return None
             elif isinstance(node.Function, Len):
-                var = self.evaluate(node.Function.Var, context)
-                return len(var)
+                    var = self.evaluate(node.Function.Var, context)
+                    return len(var)
             elif isinstance(node.Function, Max):
-                var = list(self.evaluate(node.Function.Var, context))
-                return max(var)
+                    var = list(self.evaluate(node.Function.Var, context))
+                    return max(var)
             elif isinstance(node.Function, Min):
                 var = list(self.evaluate(node.Function.Var, context))
                 return min(var)
         elif isinstance(node, Condition):
             left = self.evaluate(node.Left, context)
             right = self.evaluate(node.Right, context)
-            if node.Operator == '==':
-                return left == right
-            elif node.Operator == '!=':
-                return left != right
-            elif node.Operator == '>':
-                return left > right
-            elif node.Operator == '<':
-                return left < right
-            elif node.Operator == '>=':
-                return left >= right
-            elif node.Operator == '<=':
-                return left <= right
+            if left is None or right is None:
+                return
+            match node.Operator:
+                case '==':
+                    return left == right
+                case '!=':
+                    return left != right
+                case '>':
+                    return left > right
+                case '<':
+                    return left < right
+                case '>=':
+                    return left >= right
+                case '<=':
+                    return left <= right
         elif isinstance(node, LogicalOperation):
             left = self.evaluate(node.LeftOp, context)
             right = self.evaluate(node.RightOp, context)
@@ -1438,8 +1822,16 @@ class Evaluate():
 
             local_context = context if self.evaluate(node.Global, context) else context.copy()
 
-            for param, arg in zip(func_def.Param, node.Args):
+            if hasattr(node.Args, 'Lst'):
+                args_list = node.Args.Lst
+            elif isinstance(node.Args, list):
+                args_list = node.Args
+            else:
+                args_list = [node.Args] if node.Args else []
+
+            for param, arg in zip(func_def.Param, args_list):
                 local_context[param] = self.evaluate(arg, context)
+            
             if any(isinstance(stmt, YieldGenerator) for stmt in func_def.Body):
                 def generator():
                     for stmt in func_def.Body:
@@ -1452,6 +1844,7 @@ class Evaluate():
                                 yield yielded
                     return
                 return generator()
+            
             result = None
             for stmt in func_def.Body:
                 val = self.evaluate(stmt, local_context)
@@ -1467,6 +1860,7 @@ class Evaluate():
             opt = get_user_input(prompt=prompttxt)
             if self.evaluate(node.Echo, context):
                 print(opt)
+                return opt
             else:
                 return opt
         elif isinstance(node, ASTLangDir):
@@ -1499,7 +1893,6 @@ class Evaluate():
                     return var_val.get(key, 0)
                 if has_key:
                     return key in var_val
-                raise Exception("DictGet: no key specified for dictionary lookup")
             elif isinstance(var_val, list):
                 if slice_val:
                     start, stop, step = slice_val
@@ -1730,13 +2123,13 @@ class Evaluate():
                 for stmt in node.ExceptBody:
                     result = self.evaluate(stmt, context)
             finally:
-                if node.FinallyBody:
-                    for stmt in node.FinallyBody:
+                if not isinstance(node.DefaultBody, ObjNONE):
+                    for stmt in node.DefaultBody:
                         self.evaluate(stmt, context)
             return result
         elif isinstance(node, Sum):
             v = self.evaluate(node.Var, context)
-            if not isinstance(v, str):
+            if not isinstance(v, list):
                 raise Exception("Sum expects list argument")
             return sum(v)
         elif isinstance(node, Round):
@@ -1792,12 +2185,14 @@ class Evaluate():
             if not isinstance(lv, list):
                 raise TypeError('Median expects list')
             mvar = sorted(lv)
-            MedianIndice = None
+            
             if len(mvar) % 2 == 1:
-                MedianIndice = len(mvar)//2
+                median_index = len(mvar) // 2
+                return mvar[median_index]
             else:
-                MedianIndice = (mvar[len(mvar)//2-1] + mvar[len(mvar)//2])/2
-            return mvar[MedianIndice]
+                mid1 = len(mvar) // 2 - 1
+                mid2 = len(mvar) // 2
+                return (mvar[mid1] + mvar[mid2]) / 2
         elif isinstance(node, Mode):
             lv = self.evaluate(node.List, context)
             if not isinstance(lv, list):
@@ -1810,7 +2205,7 @@ class Evaluate():
                 if v == max_count:
                     return k
         elif isinstance(node, PauseExecution):
-            time.sleep(self.evaluate(node.Miliseconds)/1000)
+            time.sleep(self.evaluate(node.Miliseconds, context)/1000)
         elif isinstance(node, Raise):
             import builtins
             err_text = self.evaluate(node.ErrorText, context)
@@ -1872,57 +2267,160 @@ class Evaluate():
                         return False
             else:
                 return isinstance(value, type_name)
+                # Find the FormattedString evaluation and replace it with:
         elif isinstance(node, FormattedString):
             format_string = self.evaluate(node.FormatString, context)
-            args = [self.evaluate(arg, context) for arg in node.Args]
+
+            if hasattr(node.Args, 'Lst'): 
+                args = [self.evaluate(arg, context) for arg in node.Args.Lst]
+            elif isinstance(node.Args, list):
+                args = [self.evaluate(arg, context) for arg in node.Args]
+            else:
+                args = [self.evaluate(node.Args, context)]
+            
             if not isinstance(format_string, str):
                 raise TypeError("FormattedString FormatString must evaluate to a string")
             return format_string.format(*args)
         elif isinstance(node, DefineClass):
+            class_name = node.Name
+            base_class = self.evaluate(node.Base, context) if not isinstance(node.Base, ObjNONE) else None
+            
             class_def = {
-                "name": node.Name,
-                "body": node.Body,
-                "base": self.evaluate(node.Base, context) if not isinstance(node.Base, ObjNONE) else None
+                'type': 'class',
+                'name': class_name,
+                'methods': {},
+                'properties': {},
+                'constructor': None,
+                'parent': base_class
             }
-            context[node.Name] = class_def
+            
+            for stmt in node.Body:
+                if isinstance(stmt, DefineFunction):
+                    if stmt.Name == '__init__':
+                        class_def['constructor'] = {
+                            'params': stmt.Param,
+                            'body': stmt.Body
+                        }
+                    else:
+                        class_def['methods'][stmt.Name] = {
+                            'params': stmt.Param,
+                            'body': stmt.Body
+                        }
+                elif isinstance(stmt, Assignment):
+                    class_def['properties'][stmt.Name] = self.evaluate(stmt.Val, context)
+            
+            if base_class and base_class in context:
+                parent_class = context[base_class]
+                if isinstance(parent_class, dict) and parent_class.get('type') == 'class':
+                    inherited_methods = parent_class.get('methods', {}).copy()
+                    inherited_properties = parent_class.get('properties', {}).copy()
+                    
+                    inherited_methods.update(class_def['methods'])
+                    inherited_properties.update(class_def['properties'])
+                    
+                    class_def['methods'] = inherited_methods
+                    class_def['properties'] = inherited_properties
+                    
+                    if not class_def['constructor'] and parent_class.get('constructor'):
+                        class_def['constructor'] = parent_class['constructor']
+            
+            # Store the class in context
+            context[class_name] = class_def
             return class_def
         elif isinstance(node, NewInstance):
-            class_def = context.get(node.ClassName)
+            class_name = node.ClassName
+            class_def = context.get(class_name)
+            
             if not class_def:
-                raise NameError(f"Class '{node.ClassName}' is not defined")
+                raise NameError(f"Class '{class_name}' is not defined")
+            
+            if not isinstance(class_def, dict) or class_def.get('type') != 'class':
+                raise TypeError(f"'{class_name}' is not a class")
+            
+            instance = {
+                'class': class_name,
+                'properties': class_def['properties'].copy()
+            }
+            
+            for prop_name, prop_value in class_def['properties'].items():
+                instance[prop_name] = prop_value
+            
+            if 'constructor' in class_def and class_def['constructor']:
+                local_context = context.copy()
+                local_context['self'] = instance
+                
+                constructor = class_def['constructor']
+                
+                if hasattr(node.Args, 'Lst'):
+                    args_list = node.Args.Lst
+                elif isinstance(node.Args, list):
+                    args_list = node.Args
+                else:
+                    args_list = [node.Args] if node.Args else []
+                
+                constructor_params = constructor.get('params', [])
+                
+                expected_params = constructor_params[:]
+                if expected_params and expected_params[0] == 'self':
+                    expected_params = expected_params[1:]
+                
+                if len(args_list) != len(expected_params):
+                    raise ValueError(f"Constructor expects {len(expected_params)} arguments, got {len(args_list)}")
 
-            instance = {"__class__": class_def["name"]}
-            for stmt in class_def["body"]:
-                if isinstance(stmt, Assignment):
-                    instance[stmt.Name] = self.evaluate(stmt.Val, context)
-                elif isinstance(stmt, DefineFunction) and stmt.Name == "__init__":
-                    local_context = context.copy()
-                    local_context["self"] = instance
-                    for param, arg in zip(stmt.Param[1:], node.Args):
-                        local_context[param] = self.evaluate(arg, context)
-                    for s in stmt.Body:
-                        self.evaluate(s, local_context)
+                params_to_bind = constructor_params[:]
+                if params_to_bind and params_to_bind[0] == 'self':
+                    params_to_bind = params_to_bind[1:]
+                    
+                for param, arg in zip(params_to_bind, args_list):
+                    local_context[param] = self.evaluate(arg, context)
+                
+                for stmt in constructor.get('body', []):
+                    self.evaluate(stmt, local_context)
+                    
+                if 'self' in local_context:
+                    instance.update(local_context['self'])
+            
             return instance
         elif isinstance(node, MethodCall):
             obj = self.evaluate(node.Obj, context)
-            class_def = context.get(obj["__class__"])
+            method_name = node.MethodName
+            
+            if not isinstance(obj, dict) or 'class' not in obj:
+                raise TypeError("MethodCall requires an object instance")
+            
+            class_name = obj['class']
+            class_def = context.get(class_name)
+            
             if not class_def:
-                raise NameError(f"Class '{obj['__class__']}' is not defined")
-
-            method = None
-            for stmt in class_def["body"]:
-                if isinstance(stmt, DefineFunction) and stmt.Name == node.MethodName:
-                    method = stmt
-                    break
-            if not method:
-                raise NameError(f"Method '{node.MethodName}' is not defined in class '{obj['__class__']}'")
+                raise NameError(f"Class '{class_name}' is not defined")
+            if method_name not in class_def['methods']:
+                raise AttributeError(f"'{class_name}' object has no method '{method_name}'")
+        
+            method = class_def['methods'][method_name]
             local_context = context.copy()
-            local_context["self"] = obj
-            for param, arg in zip(method.Param[1:], node.Args):
+            local_context['self'] = obj
+            params = method.get('params', [])
+            if params and params[0] == 'self':
+                params = params[1:]
+            if hasattr(node.Args, 'Lst'):
+                args_list = node.Args.Lst
+            elif isinstance(node.Args, list):
+                args_list = node.Args
+            else:
+                args_list = [node.Args] if node.Args else []
+            
+            if len(args_list) != len(params):
+                raise ValueError(f"Method '{method_name}' expects {len(params)} arguments, got {len(args_list)}")
+            
+            for param, arg in zip(params, args_list):
                 local_context[param] = self.evaluate(arg, context)
+            
             result = None
-            for s in method.Body:
-                result = self.evaluate(s, local_context)
+            for stmt in method.get('body', []):
+                result = self.evaluate(stmt, local_context)
+                if isinstance(stmt, Return):
+                    break
+            
             return result
         elif isinstance(node, GetAttr):
             obj = self.evaluate(node.Obj, context)
@@ -2033,53 +2531,1523 @@ class Evaluate():
             return ord(self.evaluate(node.Str, context))
         elif isinstance(node, Chr):
             return chr(self.evaluate(node.Str, context))
-        else:
-            global runnable
-            runnable = False
-            raise TypeError(f"{type(node)}")
+        elif isinstance(node, FileRead):
+            filepath = self.evaluate(node.FilePath, context)
+            mode = self.evaluate(node.Mode, context)
+            encoding = self.evaluate(node.Encoding, context)
+            
+            if not isinstance(filepath, str):
+                raise TypeError("FileRead FilePath must be a string")
+            if not isinstance(mode, str):
+                raise TypeError("FileRead Mode must be a string")
+            if not isinstance(encoding, str):
+                raise TypeError("FileRead Encoding must be a string")
+                
+            try:
+                with open(filepath, mode, encoding=encoding) as f:
+                    return f.read()
+            except FileNotFoundError:
+                raise FileNotFoundError(f"File '{filepath}' not found")
+            except PermissionError:
+                raise PermissionError(f"Permission denied accessing '{filepath}'")
+            except Exception as e:
+                raise Exception(f"Error reading file '{filepath}': {str(e)}")
+        elif isinstance(node, FileWrite):
+            filepath = self.evaluate(node.FilePath, context)
+            content = self.evaluate(node.Content, context)
+            mode = self.evaluate(node.Mode, context)
+            encoding = self.evaluate(node.Encoding, context)
+            
+            if not isinstance(filepath, str):
+                raise TypeError("FileWrite FilePath must be a string")
+            if not isinstance(mode, str):
+                raise TypeError("FileWrite Mode must be a string")
+            if not isinstance(encoding, str):
+                raise TypeError("FileWrite Encoding must be a string")
+                
+            try:
+                with open(filepath, mode, encoding=encoding) as f:
+                    f.write(str(content))
+                    f.close()
+                return f"Successfully wrote to '{filepath}' with '{content}'"
+            except PermissionError:
+                raise PermissionError(f"Permission denied writing to '{filepath}'")
+            except Exception as e:
+                raise Exception(f"Error writing to file '{filepath}': {str(e)}")                               
+        elif isinstance(node, FileDelete):
+            filepath = self.evaluate(node.FilePath, context)
+            if not isinstance(filepath, str):
+                raise TypeError("FileDelete FilePath must be a string")
+            try:
+                import os
+                if os.path.exists(filepath):
+                    os.remove(filepath)
+                    return f"Successfully deleted '{filepath}'"
+                else:
+                    raise FileNotFoundError(f"File '{filepath}' not found")
+            except PermissionError:
+                raise PermissionError(f"Permission denied deleting '{filepath}'")
+            except Exception as e:
+                raise Exception(f"Error deleting file '{filepath}': {str(e)}")                
+        elif isinstance(node, FileSize):
+            filepath = self.evaluate(node.FilePath, context)
+            if not isinstance(filepath, str):
+                raise TypeError("FileSize FilePath must be a string")
+            try:
+                import os
+                if os.path.exists(filepath):
+                    return os.path.getsize(filepath)
+                else:
+                    raise FileNotFoundError(f"File '{filepath}' not found")
+            except Exception as e:
+                raise Exception(f"Error getting size of file '{filepath}': {str(e)}")               
+        elif isinstance(node, ListFiles):
+            dirpath = self.evaluate(node.DirectoryPath, context)
+            pattern = self.evaluate(node.Pattern, context)
+            
+            if not isinstance(dirpath, str):
+                raise TypeError("ListFiles DirectoryPath must be a string")
+            if not isinstance(pattern, str):
+                raise TypeError("ListFiles Pattern must be a string")
+                
+            try:
+                import os
+                import glob
+                if not os.path.exists(dirpath):
+                    raise FileNotFoundError(f"Directory '{dirpath}' not found")
+                if not os.path.isdir(dirpath):
+                    raise NotADirectoryError(f"'{dirpath}' is not a directory")
+                    
+                search_pattern = os.path.join(dirpath, pattern)
+                files = glob.glob(search_pattern)
+                return [os.path.basename(f) for f in files if os.path.isfile(f)]
+            except Exception as e:
+                raise Exception(f"Error listing files in '{dirpath}': {str(e)}")
+        elif isinstance(node, Lambda):
+            def lambda_func(*args):
+                local_context = context.copy()
 
+                if len(args) != len(node.Parameters):
+                    raise ValueError(f"Lambda expects {len(node.Parameters)} arguments, got {len(args)}")
+                
+                for param, arg in zip(node.Parameters, args):
+                    local_context[param] = arg
+                return self.evaluate(node.Body, local_context)
+            
+            return lambda_func      
+        elif isinstance(node, MapFunction):
+            func = self.evaluate(node.Function, context)
+            iterable = self.evaluate(node.Iterable, context)
+            
+            if not hasattr(iterable, '__iter__'):
+                raise TypeError("MapFunction Iterable must be iterable")
+            
+            result = []
+            for item in iterable:
+                if callable(func):
+                    result.append(func(item))
+                elif isinstance(func, str):
+                    func_def = context.get(func)
+                    if isinstance(func_def, DefineFunction):
+                        local_context = context.copy()
+                        if len(func_def.Param) != 1:
+                            raise ValueError(f"MapFunction expects function with 1 parameter, got {len(func_def.Param)}")
+                        local_context[func_def.Param[0]] = item
+                        func_result = None
+                        for stmt in func_def.Body:
+                            func_result = self.evaluate(stmt, local_context)
+                            if isinstance(stmt, Return):
+                                break
+                        result.append(func_result)
+                    else:
+                        raise NameError(f"Function '{func}' is not defined")
+                else:
+                    raise TypeError("MapFunction Function must be callable or function name")
+
+            return result 
+        elif isinstance(node, FilterFunction):
+            func = self.evaluate(node.Function, context)
+            iterable = self.evaluate(node.Iterable, context)
+            
+            if not hasattr(iterable, '__iter__'):
+                raise TypeError("FilterFunction Iterable must be iterable")
+            
+            result = []
+            for item in iterable:
+                should_include = False
+                if callable(func):
+                    should_include = func(item)
+                elif isinstance(func, str):
+                    func_def = context.get(func)
+                    if isinstance(func_def, DefineFunction):
+                        local_context = context.copy()
+                        if len(func_def.Param) != 1:
+                            raise ValueError(f"FilterFunction expects function with 1 parameter, got {len(func_def.Param)}")
+                        local_context[func_def.Param[0]] = item
+                        func_result = None
+                        for stmt in func_def.Body:
+                            func_result = self.evaluate(stmt, local_context)
+                            if isinstance(stmt, Return):
+                                break
+                        should_include = func_result
+                    else:
+                        raise NameError(f"Function '{func}' is not defined")
+                else:
+                    raise TypeError("FilterFunction Function must be callable or function name")
+                
+                if should_include:
+                    result.append(item)
+            
+            return result
+        elif isinstance(node, ReduceFunction):
+            func = self.evaluate(node.Function, context)
+            iterable = self.evaluate(node.Iterable, context)
+            
+            if not hasattr(iterable, '__iter__'):
+                raise TypeError("ReduceFunction Iterable must be iterable")
+            
+            items = list(iterable)
+            if not items:
+                if isinstance(node.InitialValue, ObjNONE):
+                    raise ValueError("ReduceFunction of empty sequence with no initial value")
+                return self.evaluate(node.InitialValue, context)
+            if isinstance(node.InitialValue, ObjNONE):
+                accumulator = items[0]
+                items = items[1:]
+            else:
+                accumulator = self.evaluate(node.InitialValue, context)
+
+            for item in items:
+                if callable(func):
+                    accumulator = func(accumulator, item)
+                elif isinstance(func, str):
+                    func_def = context.get(func)
+                    if isinstance(func_def, DefineFunction):
+                        local_context = context.copy()
+                        if len(func_def.Param) != 2:
+                            raise ValueError(f"ReduceFunction expects function with 2 parameters, got {len(func_def.Param)}")
+                        local_context[func_def.Param[0]] = accumulator
+                        local_context[func_def.Param[1]] = item
+                        func_result = None
+                        for stmt in func_def.Body:
+                            func_result = self.evaluate(stmt, local_context)
+                            if isinstance(stmt, Return):
+                                break
+                        accumulator = func_result
+                    else:
+                        raise NameError(f"Function '{func}' is not defined")
+                else:
+                    raise TypeError("ReduceFunction Function must be callable or function name")
+            
+            return accumulator
+        elif isinstance(node, SuperClass):
+            child_name = self.evaluate(node.ChildClassName, context)
+            parent_name = self.evaluate(node.ParentClassName, context)
+            
+            if not isinstance(child_name, str) or not isinstance(parent_name, str):
+                raise TypeError("SuperClass names must be strings")
+
+            if parent_name not in context:
+                raise NameError(f"Parent class '{parent_name}' is not defined")
+            
+            parent_class = context[parent_name]
+            if not isinstance(parent_class, dict) or 'type' not in parent_class or parent_class['type'] != 'class':
+                raise TypeError(f"'{parent_name}' is not a class")
+
+            child_class = {
+                'type': 'class',
+                'parent': parent_name,
+                'methods': parent_class['methods'].copy(),
+                'properties': parent_class['properties'].copy(),
+                'constructor': parent_class.get('constructor', []) 
+            }
+            
+            additional_methods = self.evaluate(node.Methods, context)
+            if isinstance(additional_methods, list):
+                for method in additional_methods:
+                    if isinstance(method, tuple) and len(method) == 2:
+                        method_name, method_def = method
+                        child_class['methods'][method_name] = method_def
+            
+            additional_props = self.evaluate(node.Properties, context)
+            if isinstance(additional_props, list):
+                for prop in additional_props:
+                    if isinstance(prop, tuple) and len(prop) == 2:
+                        prop_name, prop_value = prop
+                        child_class['properties'][prop_name] = prop_value
+            
+            context[child_name] = child_class
+            return f"Class '{child_name}' inherits from '{parent_name}'"
+        elif isinstance(node, Super):
+            method_name = self.evaluate(node.MethodName, context)
+            args = self.evaluate(node.Args, context)
+            if 'self' not in context:
+                raise RuntimeError("Super() can only be called within a method")
+            
+            current_object = context['self']
+            if 'class' not in current_object:
+                raise RuntimeError("Current object has no class information")
+            
+            current_class_name = current_object['class']
+            current_class = context[current_class_name]
+            
+            if 'parent' not in current_class:
+                raise RuntimeError(f"Class '{current_class_name}' has no parent class")
+            
+            parent_class_name = current_class['parent']
+            parent_class = context[parent_class_name]
+            
+            # call the parent method
+            if method_name not in parent_class['methods']:
+                raise AttributeError(f"Parent class '{parent_class_name}' has no method '{method_name}'")
+            
+            parent_method = parent_class['methods'][method_name]
+            
+            local_context = context.copy()
+            local_context['self'] = current_object
+            
+            if len(args) != len(parent_method['params']):
+                raise ValueError(f"Method '{method_name}' expects {len(parent_method['params'])} arguments, got {len(args)}")
+            
+            for param, arg in zip(parent_method['params'], args):
+                local_context[param] = arg
+            result = None
+            for stmt in parent_method['body']:
+                result = self.evaluate(stmt, local_context)
+                if isinstance(stmt, Return):
+                    break
+            
+            return result
+        elif isinstance(node, IsInstanceOf):
+            obj = self.evaluate(node.Object, context)
+            class_name = self.evaluate(node.ClassName, context)
+            
+            if not isinstance(class_name, str):
+                raise TypeError("ClassName must be a string")
+            if not isinstance(obj, dict) or 'class' not in obj:
+                return False
+            if obj['class'] == class_name:
+                return True
+            current_class = context.get(obj['class'])
+            while current_class and 'parent' in current_class:
+                if current_class['parent'] == class_name:
+                    return True
+                current_class = context.get(current_class['parent'])
+            
+            return False
+        elif isinstance(node, EvalExpression):
+            expression = self.evaluate(node.Expression, context)
+            globals_dict = self.evaluate(node.Globals, context) if not isinstance(node.Globals, ObjNONE) else globals()
+            locals_dict = self.evaluate(node.Locals, context) if not isinstance(node.Locals, ObjNONE) else context
+            
+            if not isinstance(expression, str):
+                raise TypeError("EvalExpression requires a string expression")
+            
+            try:
+                return eval(expression, globals_dict, locals_dict)
+            except Exception as e:
+                raise Exception(f"Error evaluating expression '{expression}': {str(e)}")
+        elif isinstance(node, ExecCode):
+            code = self.evaluate(node.Code, context)
+            globals_dict = self.evaluate(node.Globals, context) if not isinstance(node.Globals, ObjNONE) else globals()
+            locals_dict = self.evaluate(node.Locals, context) if not isinstance(node.Locals, ObjNONE) else context
+            
+            if not isinstance(code, str):
+                raise TypeError("ExecCode requires a string code")
+            
+            try:
+                exec(code, globals_dict, locals_dict)
+                if locals_dict is context:
+                    context.update(locals_dict)
+                return None
+            except Exception as e:
+                raise Exception(f"Error executing code: {str(e)}")
+        elif isinstance(node, CallFunction):
+            func_name = self.evaluate(node.FunctionName, context)
+            args = self.evaluate(node.Args, context)
+            kwargs = self.evaluate(node.Kwargs, context)
+            
+            # Retrieve appropriate function name to be refreneced by intepreter
+            if callable(func_name):
+                func = func_name
+            elif isinstance(func_name, str) and func_name in context:
+                func = context[func_name]
+            elif isinstance(func_name, str):
+                try:
+                    func = eval(func_name, globals())
+                except:
+                    raise NameError(f"Function '{func_name}' not found")
+            else:
+                raise NameError(f"Function '{func_name}' not found")
+            
+            if not callable(func):
+                raise TypeError(f"'{func_name}' is not callable")
+            
+            try:
+                if isinstance(args, list) and isinstance(kwargs, dict):
+                    return func(*args, **kwargs)
+                elif isinstance(args, list):
+                    return func(*args)
+                else:
+                    return func()
+            except Exception as e:
+                raise Exception(f"Error calling function '{func_name}': {str(e)}")
+        elif isinstance(node, Sort):
+            lst = self.evaluate(node.List, context)
+            reverse = self.evaluate(node.Reverse, context)
+            key_func = self.evaluate(node.Key, context) if not isinstance(node.Key, ObjNONE) else None
+            
+            if not isinstance(lst, list):
+                raise TypeError("Sort expects a list")
+            
+            if key_func:
+                if callable(key_func):
+                    return sorted(lst, key=key_func, reverse=reverse)
+                elif isinstance(key_func, str):
+                    try:
+                        key_func = eval(key_func, globals())
+                        return sorted(lst, key=key_func, reverse=reverse)
+                    except:
+                        raise ValueError(f"Invalid key function: {key_func}")
+            else:
+                return sorted(lst, reverse=reverse)
+        elif isinstance(node, Zip):
+            lists = [self.evaluate(lst, context) for lst in node.Lists]
+            return list(zip(*lists))
+        elif isinstance(node, Shuffle):
+            import random
+            lst = self.evaluate(node.List, context).copy()
+            random.shuffle(lst)
+            return lst
+        elif isinstance(node, Sample):
+            import random
+            lst = self.evaluate(node.List, context)
+            count = self.evaluate(node.Count, context)
+            return random.sample(lst, count)
+        elif isinstance(node, Flatten):
+            lst = self.evaluate(node.List, context)
+            depth = self.evaluate(node.Depth, context)
+            
+            def flatten_list(l, d):
+                if d <= 0:
+                    return l
+                result = []
+                for item in l:
+                    if isinstance(item, list):
+                        result.extend(flatten_list(item, d-1))
+                    else:
+                        result.append(item)
+                return result
+            
+            return flatten_list(lst, depth)
+        elif isinstance(node, SetAssignment):
+            return set(self.evaluate(elem, context) for elem in node.Elements)        
+        elif isinstance(node, SetOperations):
+            set1 = self.evaluate(node.Set1, context)
+            set2 = self.evaluate(node.Set2, context)
+            
+            if not isinstance(set1, set) or not isinstance(set2, set):
+                raise TypeError("SetOperations requires set arguments")
+            
+            if node.Operation == 'union':
+                return set1.union(set2)
+            elif node.Operation == 'intersection':
+                return set1.intersection(set2)
+            elif node.Operation == 'difference':
+                return set1.difference(set2)
+            elif node.Operation == 'symmetric_difference':
+                return set1.symmetric_difference(set2)
+            else:
+                raise ValueError(f"Unknown set operation: {node.Operation}") 
+        elif isinstance(node, SetMethods):
+            set_var = self.evaluate(node.SetVar, context)
+            if not isinstance(set_var, set):
+                raise TypeError("SetMethods requires a set")
+            
+            if node.Method == 'add':
+                element = self.evaluate(node.Element, context)
+                set_var.add(element)
+                return set_var
+            elif node.Method == 'remove':
+                element = self.evaluate(node.Element, context)
+                set_var.remove(element)
+                return set_var
+            elif node.Method == 'discard':
+                element = self.evaluate(node.Element, context)
+                set_var.discard(element)
+                return set_var
+            elif node.Method == 'clear':
+                set_var.clear()
+                return set_var
+            elif node.Method == 'copy':
+                return set_var.copy()
+            else:
+                raise ValueError(f"Unknown set method: {node.Method}")
+        elif isinstance(node, SetContains):
+            set_val = self.evaluate(node.Set, context)
+            element = self.evaluate(node.Element, context)
+            return element in set_val
+        elif isinstance(node, DateTime):
+            from datetime import datetime
+            
+            year = self.evaluate(node.Year, context) if not isinstance(node.Year, ObjNONE) else datetime.now().year
+            month = self.evaluate(node.Month, context) if not isinstance(node.Month, ObjNONE) else datetime.now().month
+            day = self.evaluate(node.Day, context) if not isinstance(node.Day, ObjNONE) else datetime.now().day
+            hour = self.evaluate(node.Hour, context)
+            minute = self.evaluate(node.Minute, context)
+            second = self.evaluate(node.Second, context)
+            
+            return datetime(year, month, day, hour, minute, second)
+        elif isinstance(node, DateTimeNow):
+            from datetime import datetime
+            return datetime.now()
+        elif isinstance(node, Statistics):
+            data = self.evaluate(node.Data, context)
+            operation = node.Operation
+            
+            if not isinstance(data, list) or not all(isinstance(x, (int, float)) for x in data):
+                raise TypeError("Statistics requires a list of numbers")
+            
+            if not data:
+                raise ValueError("Statistics requires non-empty data")
+            
+            if operation == 'variance':
+                mean = sum(data) / len(data)
+                return sum((x - mean) ** 2 for x in data) / len(data)
+            elif operation == 'stdev':
+                mean = sum(data) / len(data)
+                variance = sum((x - mean) ** 2 for x in data) / len(data)
+                return variance ** 0.5
+            elif operation == 'correlation':
+                if len(data) != 2 or not isinstance(data[0], list) or not isinstance(data[1], list):
+                    raise ValueError("Correlation requires two lists of data")
+                x_data, y_data = data
+                if len(x_data) != len(y_data):
+                    raise ValueError("Correlation requires equal length data sets")
+                
+                n = len(x_data)
+                mean_x = sum(x_data) / n
+                mean_y = sum(y_data) / n
+                
+                numerator = sum((x_data[i] - mean_x) * (y_data[i] - mean_y) for i in range(n))
+                denominator_x = sum((x - mean_x) ** 2 for x in x_data) ** 0.5
+                denominator_y = sum((y - mean_y) ** 2 for y in y_data) ** 0.5
+                
+                if denominator_x == 0 or denominator_y == 0:
+                    return 0
+                
+                return numerator / (denominator_x * denominator_y)
+            else:
+                raise ValueError(f"Unknown statistics operation: {operation}")
+        elif isinstance(node, Matrix):
+            rows = self.evaluate(node.Rows, context)
+            if not isinstance(rows, list) or not all(isinstance(row, list) for row in rows):
+                raise TypeError("Matrix requires a list of lists")
+            return rows
+        elif isinstance(node, LinearAlgebra):
+            matrix1 = self.evaluate(node.Matrix1, context)
+            matrix2 = self.evaluate(node.Matrix2, context) if not isinstance(node.Matrix2, ObjNONE) else None
+            operation = self.evaluate(node.Operation, context)
+            
+            if operation == 'transpose':
+                if not isinstance(matrix1, list) or not all(isinstance(row, list) for row in matrix1):
+                    raise TypeError("Transpose requires a matrix (list of lists)")
+                return [[matrix1[j][i] for j in range(len(matrix1))] for i in range(len(matrix1[0]))]
+            
+            elif operation == 'multiply':
+                if matrix2 is None:
+                    raise ValueError("Matrix multiplication requires two matrices")
+                
+                # Matrix multiplication
+                if len(matrix1[0]) != len(matrix2):
+                    raise ValueError("Matrix dimensions incompatible for multiplication")
+                
+                result = []
+                for i in range(len(matrix1)):
+                    row = []
+                    for j in range(len(matrix2[0])):
+                        sum_val = 0
+                        for k in range(len(matrix2)):
+                            sum_val += matrix1[i][k] * matrix2[k][j]
+                        row.append(sum_val)
+                    result.append(row)
+                return result
+            
+            elif operation == 'determinant':
+                if len(matrix1) != len(matrix1[0]):
+                    raise ValueError("Determinant requires a square matrix")
+                
+                def det(matrix):
+                    if len(matrix) == 1:
+                        return matrix[0][0]
+                    if len(matrix) == 2:
+                        return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]
+                    
+                    result = 0
+                    for i in range(len(matrix)):
+                        minor = [row[:i] + row[i+1:] for row in matrix[1:]]
+                        result += ((-1) ** i) * matrix[0][i] * det(minor)
+                    return result
+                
+                return det(matrix1)
+            
+            else:
+                raise ValueError(f"Unknown linear algebra operation: {operation}")
+        elif isinstance(node, Percentile):
+            data = self.evaluate(node.Data, context)
+            percentage = self.evaluate(node.Percentage, context)
+            
+            if not isinstance(data, list) or not all(isinstance(x, (int, float)) for x in data):
+                raise TypeError("Percentile requires a list of numbers")
+            
+            sorted_data = sorted(data)
+            k = (len(sorted_data) - 1) * (percentage / 100)
+            f = math.floor(k)
+            c = math.ceil(k)
+            
+            if f == c:
+                return sorted_data[int(k)]
+            
+            return sorted_data[int(f)] * (c - k) + sorted_data[int(c)] * (k - f)
+        elif isinstance(node, Assert):
+            condition = self.evaluate(node.Condition, context)
+            message = self.evaluate(node.Message, context)
+            
+            if not condition:
+                raise AssertionError(message)
+            return True
+        elif isinstance(node, WarningRaise):
+            import warnings
+            message = self.evaluate(node.Message, context)
+            category = self.evaluate(node.Category, context)
+            
+            if category == 'UserWarning':
+                warnings.warn(message, UserWarning)
+            elif category == 'DeprecationWarning':
+                warnings.warn(message, DeprecationWarning)
+            elif category == 'RuntimeWarning':
+                warnings.warn(message, RuntimeWarning)
+            else:
+                warnings.warn(message)
+            
+            return None
+        elif isinstance(node, CustomError):
+            name = self.evaluate(node.Name, context)
+            base_error = self.evaluate(node.BaseError, context)
+            base_class = eval(base_error) if isinstance(base_error, str) else Exception
+            
+            custom_exception = type(name, (base_class,), {})
+            context[name] = custom_exception
+            
+            return f"Custom error '{name}' created"
+        elif isinstance(node, InspectCode):
+            import sys
+            obj = self.evaluate(node.Object, context)
+            property_name = self.evaluate(node.Property, context)
+            
+            if property_name == 'type':
+                return type(obj).__name__
+            elif property_name == 'methods':
+                if hasattr(obj, '__dict__'):
+                    methods = [attr for attr in dir(obj) if callable(getattr(obj, attr, None))]
+                    return methods
+                elif isinstance(obj, dict) and obj.get('type') == 'class':
+                    return list(obj.get('methods', {}).keys())
+                else:
+                    return [attr for attr in dir(obj) if callable(getattr(obj, attr, None))]
+            elif property_name == 'attributes':
+                if hasattr(obj, '__dict__'):
+                    return list(obj.__dict__.keys())
+                elif isinstance(obj, dict):
+                    return list(obj.keys())
+                else:
+                    return [attr for attr in dir(obj) if not callable(getattr(obj, attr, None))]
+            elif property_name == 'source':
+                import inspect
+                try:
+                    if callable(obj):
+                        return inspect.getsource(obj)
+                    else:
+                        return f"Source not available for {type(obj).__name__}"
+                except:
+                    return "Source code not available"
+            elif property_name == 'size':
+                import sys
+                return sys.getsizeof(obj)
+            elif property_name == 'module':
+                return getattr(obj, '__module__', 'unknown')
+            elif property_name == 'doc':
+                return getattr(obj, '__doc__', 'No documentation available')
+            elif property_name == 'all':
+                result = {
+                    'type': type(obj).__name__,
+                    'size': sys.getsizeof(obj),
+                    'module': getattr(obj, '__module__', 'unknown'),
+                    'doc': getattr(obj, '__doc__', 'No documentation')
+                }
+                if hasattr(obj, '__dict__'):
+                    result['attributes'] = list(obj.__dict__.keys())
+                    result['methods'] = [attr for attr in dir(obj) if callable(getattr(obj, attr, None))]
+                return result
+            else:
+                raise ValueError(f"Unknown property: {property_name}")
+        elif isinstance(node, Debugger):
+            code = self.evaluate(node.Code, context)
+            breakpoints = self.evaluate(node.Breakpoints, context)
+            
+            print(f"DEBUG MODE: Starting execution with {len(breakpoints)} breakpoints")
+
+            debug_info = {
+                'breakpoints': breakpoints,
+                'current_line': 0,
+                'variables': {},
+                'call_stack': []
+            }
+            context['__debug_info__'] = debug_info
+            
+            def debug_evaluate(node, ctx, line_num=0):
+                debug_info['current_line'] = line_num
+                debug_info['variables'] = {k: v for k, v in ctx.items() if not k.startswith('__')}
+
+                if line_num in breakpoints:
+                    print(f"\nBREAKPOINT HIT at line {line_num}")
+                    print(f"Current variables: {debug_info['variables']}")
+                    print(f"Call Stack depth: {len(debug_info['call_stack'])}")
+                    while True:
+                        cmd = input("Debug> (c)ontinue, (s)tep, (v)ariables, (st)ack, (q)uit: ").strip().lower()
+                        if cmd in ['c', 'continue']:
+                            break
+                        elif cmd in ['s', 'step']:
+                            break
+                        elif cmd in ['v', 'variables']:
+                            for var, val in debug_info['variables'].items():
+                                print(f"  {var} = {val}")
+                        elif cmd in ['st', 'stack']:
+                            print(f"Call stack: {debug_info['call_stack']}")
+                        elif cmd in ['q', 'quit']:
+                            raise KeyboardInterrupt("Debug session terminated")
+                        else:
+                            print("Unknown command. Use c, s, v, st, or q")
+                
+                return self.evaluate(node, ctx)
+            
+            try:
+                if hasattr(code, 'ModuleCode'):
+                    for i, stmt in enumerate(code.ModuleCode):
+                        debug_info['call_stack'].append(f"Line {i+1}: {type(stmt).__name__}")
+                        result = debug_evaluate(stmt, context, i+1)
+                        debug_info['call_stack'].pop()
+                else:
+                    result = debug_evaluate(code, context, 1)
+                
+                print("Execution completed successfully")
+                return result
+                
+            except Exception as e:
+                print(f"DEBUG MODE: Exception at line {debug_info['current_line']}: {e}")
+                print(f"Variables at crash: {debug_info['variables']}")
+                raise
+        elif isinstance(node, StackTrace):
+            import inspect
+            depth = self.evaluate(node.Depth, context)
+            stack = inspect.stack()
+            
+            trace_info = []
+            for i, frame in enumerate(stack[1:depth+1]):
+                trace_info.append({
+                    'frame': i+1,
+                    'filename': frame.filename,
+                    'function': frame.function,
+                    'line': frame.lineno,
+                    'code': frame.code_context[0].strip() if frame.code_context else 'N/A'
+                })
+            
+            print("STACK TRACE:")
+            for trace in trace_info:
+                print(f"  Frame {trace['frame']}: {trace['function']}() in {trace['filename']}:{trace['line']}")
+                print(f"    Code: {trace['code']}")
+            
+            return trace_info
+        elif isinstance(node, DataStream):
+            source = self.evaluate(node.Source, context)
+            buffer_size = self.evaluate(node.BufferSize, context)
+            
+            class StreamIterator:
+                def __init__(self, data, buffer_size):
+                    self.data = data
+                    self.buffer_size = buffer_size
+                    self.position = 0
+                
+                def __iter__(self):
+                    return self
+                
+                def __next__(self):
+                    if isinstance(self.data, str):
+                        if self.position >= len(self.data):
+                            raise StopIteration
+                        chunk = self.data[self.position:self.position + self.buffer_size]
+                        self.position += self.buffer_size
+                        return chunk
+                    elif isinstance(self.data, list):
+                        if self.position >= len(self.data):
+                            raise StopIteration
+                        chunk = self.data[self.position:self.position + self.buffer_size]
+                        self.position += self.buffer_size
+                        return chunk
+                    elif hasattr(self.data, 'read'):  # File-like object
+                        chunk = self.data.read(self.buffer_size)
+                        if not chunk:
+                            raise StopIteration
+                        return chunk
+                    else:
+                        raise TypeError(f"Unsupported stream source type: {type(self.data)}")
+                
+                def reset(self):
+                    self.position = 0
+                
+                def get_stats(self):
+                    if isinstance(self.data, (str, list)):
+                        total_size = len(self.data)
+                        chunks_processed = self.position // self.buffer_size
+                        progress = (self.position / total_size) * 100 if total_size > 0 else 100
+                        return {
+                            'total_size': total_size,
+                            'position': self.position,
+                            'chunks_processed': chunks_processed,
+                            'progress_percent': progress,
+                            'buffer_size': self.buffer_size
+                        }
+                    else:
+                        return {
+                            'position': self.position,
+                            'chunks_processed': self.position // self.buffer_size,
+                            'buffer_size': self.buffer_size
+                        }
+            
+            stream = StreamIterator(source, buffer_size)
+            stream_id = f"stream_{len([k for k in context.keys() if k.startswith('stream_')])}"
+            context[stream_id] = stream
+            
+            return stream
+        elif isinstance(node, StreamProcessor):
+            stream = self.evaluate(node.Stream, context)
+            process_function = self.evaluate(node.ProcessFunction, context)
+            window_size = self.evaluate(node.WindowSize, context)
+            
+            if not hasattr(stream, '__iter__'):
+                raise TypeError("StreamProcessor requires an iterable stream")
+            
+            results = []
+            window = []
+            
+            for chunk in stream:
+                if isinstance(chunk, list):
+                    window.extend(chunk)
+                else:
+                    window.append(chunk)
+                
+                if len(window) >= window_size:
+                    current_window = window[:window_size]
+                    
+                    if isinstance(process_function, str):
+                        if process_function == 'sum':
+                            processed = sum(current_window)
+                        elif process_function == 'avg':
+                            if all(isinstance(x, (int, float)) for x in current_window):
+                                processed = sum(current_window) / len(current_window)
+                            else:
+                                raise TypeError("Average requires numeric values")
+                        elif process_function == 'max':
+                            processed = max(current_window)
+                        elif process_function == 'min':
+                            processed = min(current_window)
+                        elif process_function == 'count':
+                            processed = len(current_window)
+                        else:
+                            func_def = context.get(process_function)
+                            if isinstance(func_def, DefineFunction):
+                                local_context = context.copy()
+                                if len(func_def.Param) != 1:
+                                    raise ValueError("Stream processing function must take 1 parameter")
+                                local_context[func_def.Param[0]] = current_window
+                                
+                                func_result = None
+                                for stmt in func_def.Body:
+                                    func_result = self.evaluate(stmt, local_context)
+                                    if isinstance(stmt, Return):
+                                        break
+                                processed = func_result
+                            else:
+                                raise NameError(f"Function '{process_function}' not found")
+                    elif callable(process_function):
+                        processed = process_function(current_window)
+                    else:
+                        processed = current_window
+                    
+                    results.append(processed)
+                
+                    window = window[1:]
+            if window:
+                if isinstance(process_function, str):
+                    if process_function == 'sum':
+                        processed = sum(window)
+                    elif process_function == 'avg':
+                        if all(isinstance(x, (int, float)) for x in window):
+                            processed = sum(window) / len(window)
+                        else:
+                            raise TypeError("Average requires numeric values")
+                    elif process_function == 'max':
+                        processed = max(window)
+                    elif process_function == 'min':
+                        processed = min(window)
+                    elif process_function == 'count':
+                        processed = len(window)
+                    else:
+                        func_def = context.get(process_function)
+                        if isinstance(func_def, DefineFunction):
+                            local_context = context.copy()
+                            if len(func_def.Param) != 1:
+                                raise ValueError("Stream processing function must take 1 parameter")
+                            local_context[func_def.Param[0]] = window
+                            
+                            func_result = None
+                            for stmt in func_def.Body:
+                                func_result = self.evaluate(stmt, local_context)
+                                if isinstance(stmt, Return):
+                                    break
+                            processed = func_result
+                        else:
+                            processed = window
+                elif callable(process_function):
+                    processed = process_function(window)
+                else:
+                    processed = window
+                results.append(processed)
+            
+            return results
+        elif isinstance(node, Pipeline):
+            stages = self.evaluate(node.Stages, context)
+            
+            if not isinstance(stages, list):
+                raise TypeError("Pipeline stages must be a list")
+            
+            def create_pipeline(*args):
+                data = args[0] if args else None
+                
+                for i, stage in enumerate(stages):
+                    try:
+                        if callable(stage):
+                            data = stage(data)
+                        elif isinstance(stage, str):
+                            func_def = context.get(stage)
+                            if isinstance(func_def, DefineFunction):
+                                local_context = context.copy()
+                                if len(func_def.Param) != 1:
+                                    raise ValueError(f"Pipeline stage {i+1} function must take 1 parameter")
+                                local_context[func_def.Param[0]] = data
+                                
+                                func_result = None
+                                for stmt in func_def.Body:
+                                    func_result = self.evaluate(stmt, local_context)
+                                    if isinstance(stmt, Return):
+                                        break
+                                data = func_result
+                            else:
+                                raise NameError(f"Pipeline stage {i+1}: Function '{stage}' not found")
+                        else:
+                            if hasattr(stage, 'evaluate'):
+                                data = self.evaluate(stage, context)
+                            else:
+                                raise TypeError(f"Pipeline stage {i+1}: Invalid stage type {type(stage)}")
+                    
+                    except Exception as e:
+                        raise Exception(f"Pipeline failed at stage {i+1}: {str(e)}")
+                
+                return data
+            
+            return create_pipeline
+        elif isinstance(node, ArrayUtils):
+            array = self.evaluate(node.Array, context)
+            operation = self.evaluate(node.Operation, context)
+            args = [self.evaluate(arg, context) for arg in node.Args]
+            
+            if not isinstance(array, list):
+                raise TypeError("ArrayUtils requires a list")
+            
+            if operation == 'chunk':
+                chunk_size = args[0] if args else 2
+                if not isinstance(chunk_size, int) or chunk_size <= 0:
+                    raise ValueError("Chunk size must be a positive integer")
+                return [array[i:i + chunk_size] for i in range(0, len(array), chunk_size)]
+            
+            elif operation == 'rotate':
+                steps = args[0] if args else 1
+                if not isinstance(steps, int):
+                    raise ValueError("Rotation steps must be an integer")
+                if len(array) == 0:
+                    return array
+                steps = steps % len(array)
+                return array[steps:] + array[:steps]
+            
+            elif operation == 'interleave':
+                other_array = args[0] if args else []
+                if not isinstance(other_array, list):
+                    raise TypeError("Interleave requires another list")
+                result = []
+                max_len = max(len(array), len(other_array))
+                for i in range(max_len):
+                    if i < len(array):
+                        result.append(array[i])
+                    if i < len(other_array):
+                        result.append(other_array[i])
+                return result
+            
+            elif operation == 'difference':
+                other_array = args[0] if args else []
+                if not isinstance(other_array, list):
+                    raise TypeError("Difference requires another list")
+                return [item for item in array if item not in other_array]
+            
+            elif operation == 'flatten':
+                depth = args[0] if args else 1
+                def flatten_recursive(lst, d):
+                    if d <= 0:
+                        return lst
+                    result = []
+                    for item in lst:
+                        if isinstance(item, list):
+                            result.extend(flatten_recursive(item, d-1))
+                        else:
+                            result.append(item)
+                    return result
+                return flatten_recursive(array, depth)
+            
+            else:
+                raise ValueError(f"Unknown ArrayUtils operation: {operation}")
+        elif isinstance(node, Find):
+            collection = self.evaluate(node.Collection, context)
+            predicate = self.evaluate(node.Predicate, context)
+            mode = self.evaluate(node.Mode, context)
+            
+            if not hasattr(collection, '__iter__'):
+                raise TypeError("Find requires an iterable collection")
+            
+            matches = []
+            indices = []
+            
+            for i, item in enumerate(collection):
+                match = False
+                
+                if callable(predicate):
+                    match = predicate(item)
+                elif isinstance(predicate, str):
+                    func_def = context.get(predicate)
+                    if isinstance(func_def, DefineFunction):
+                        local_context = context.copy()
+                        if len(func_def.Param) != 1:
+                            raise ValueError("Find predicate function must take 1 parameter")
+                        local_context[func_def.Param[0]] = item
+                        
+                        func_result = None
+                        for stmt in func_def.Body:
+                            func_result = self.evaluate(stmt, local_context)
+                            if isinstance(stmt, Return):
+                                break
+                        match = bool(func_result)
+                    else:
+                        match = str(item) == predicate
+                else:
+                    match = item == predicate
+                
+                if match:
+                    matches.append(item)
+                    indices.append(i)
+            
+            if mode == 'first':
+                return matches[0] if matches else None
+            elif mode == 'last':
+                return matches[-1] if matches else None
+            elif mode == 'all':
+                return matches
+            elif mode == 'index':
+                return indices[0] if indices else -1
+            else:
+                raise ValueError(f"Unknown Find mode: {mode}")
+        elif isinstance(node, GroupBy):
+            collection = self.evaluate(node.Collection, context)
+            key_function = self.evaluate(node.KeyFunction, context)
+            
+            if not hasattr(collection, '__iter__'):
+                raise TypeError("GroupBy requires an iterable collection")
+            
+            groups = {}
+            
+            for item in collection:
+                if callable(key_function):
+                    key = key_function(item)
+                elif isinstance(key_function, str):
+                    func_def = context.get(key_function)
+                    if isinstance(func_def, DefineFunction):
+                        local_context = context.copy()
+                        if len(func_def.Param) != 1:
+                            raise ValueError("GroupBy key function must take 1 parameter")
+                        local_context[func_def.Param[0]] = item
+                        
+                        func_result = None
+                        for stmt in func_def.Body:
+                            func_result = self.evaluate(stmt, local_context)
+                            if isinstance(stmt, Return):
+                                break
+                        key = func_result
+                    else:
+                        if hasattr(item, key_function):
+                            key = getattr(item, key_function)
+                        elif isinstance(item, dict):
+                            key = item.get(key_function)
+                        else:
+                            key = str(item)
+                else:
+                    key = key_function
+                
+                if key not in groups:
+                    groups[key] = []
+                groups[key].append(item)
+            
+            return groups
+        elif isinstance(node, Partition):
+            collection = self.evaluate(node.Collection, context)
+            predicate = self.evaluate(node.Predicate, context)
+            
+            if not hasattr(collection, '__iter__'):
+                raise TypeError("Partition requires an iterable collection")
+            
+            true_items = []
+            false_items = []
+            
+            for item in collection:
+                match = False
+                
+                if callable(predicate):
+                    match = predicate(item)
+                elif isinstance(predicate, str):
+                    func_def = context.get(predicate)
+                    if isinstance(func_def, DefineFunction):
+                        local_context = context.copy()
+                        if len(func_def.Param) != 1:
+                            raise ValueError("Partition predicate function must take 1 parameter")
+                        local_context[func_def.Param[0]] = item
+                        
+                        func_result = None
+                        for stmt in func_def.Body:
+                            func_result = self.evaluate(stmt, local_context)
+                            if isinstance(stmt, Return):
+                                break
+                        match = bool(func_result)
+                    else:
+                        match = str(item) == predicate
+                else:
+                    match = item == predicate
+                
+                if match:
+                    true_items.append(item)
+                else:
+                    false_items.append(item)
+            
+            return [true_items, false_items]
+        elif isinstance(node, Frequency):
+            collection = self.evaluate(node.Collection, context)
+            
+            if not hasattr(collection, '__iter__'):
+                raise TypeError("Frequency requires an iterable collection")
+            
+            frequency_count = {}
+            for item in collection:
+                frequency_count[item] = frequency_count.get(item, 0) + 1
+            
+            return frequency_count
+        elif isinstance(node, SafeCast):
+            value = self.evaluate(node.Value, context)
+            target_type = self.evaluate(node.TargetType, context)
+            default_value = self.evaluate(node.DefaultValue, context) if not isinstance(node.DefaultValue, ObjNONE) else None
+            
+            try:
+                if target_type == 'int':
+                    return int(value)
+                elif target_type == 'float':
+                    return float(value)
+                elif target_type == 'str':
+                    return str(value)
+                elif target_type == 'bool':
+                    if isinstance(value, str):
+                        return value.lower() in ('true', '1', 'yes', 'on')
+                    return bool(value)
+                elif target_type == 'list':
+                    if isinstance(value, str):
+                        try:
+                            import json
+                            return json.loads(value)
+                        except:
+                            return list(value)
+                    return list(value)
+                else:
+                    raise ValueError(f"Unknown target type: {target_type}")
+            
+            except (ValueError, TypeError):
+                if default_value is not None:
+                    return default_value
+                else:
+                    raise ValueError(f"Cannot cast {value} to {target_type} and no default provided")
+        elif isinstance(node, RangeCheck):
+            value = self.evaluate(node.Value, context)
+            min_val = self.evaluate(node.Min, context) if not isinstance(node.Min, ObjNONE) else None
+            max_val = self.evaluate(node.Max, context) if not isinstance(node.Max, ObjNONE) else None
+            inclusive = self.evaluate(node.Inclusive, context)
+            
+            if not isinstance(value, (int, float)):
+                raise TypeError("RangeCheck requires a numeric value")
+            
+            result = {
+                'value': value,
+                'in_range': True,
+                'violations': []
+            }
+            
+            if min_val is not None:
+                if inclusive:
+                    if value < min_val:
+                        result['in_range'] = False
+                        result['violations'].append(f"Value {value} is less than minimum {min_val}")
+                else:
+                    if value <= min_val:
+                        result['in_range'] = False
+                        result['violations'].append(f"Value {value} is less than or equal to minimum {min_val}")
+            
+            if max_val is not None:
+                if inclusive:
+                    if value > max_val:
+                        result['in_range'] = False
+                        result['violations'].append(f"Value {value} is greater than maximum {max_val}")
+                else:
+                    if value >= max_val:
+                        result['in_range'] = False
+                        result['violations'].append(f"Value {value} is greater than or equal to maximum {max_val}")
+            
+            return result
+        elif isinstance(node, Calculate):
+            ex = self.evaluate(node.Expression, context)
+            import re
+            if not re.match(r'^[0-9+\-*/.() \t\n]+$', ex):
+                raise ValueError(f"Calculate: Expression contains invalid characters: {ex}")
+            danpattern = ['import', 'exec', 'eval', '__', 'open', 'file']
+            for pattern in danpattern:
+                if pattern in ex.lower():
+                    raise ValueError(f"Calculate: Dangerous pattern '{pattern}' detected")
+            
+            try:
+                result = eval(ex, {'__builtins__': {}}, {})
+                return result
+            except Exception as e:
+                raise ValueError(f"Calculate: Error evaluating '{ex}': {str(e)}")
+        elif isinstance(node, Split):
+            text = str(self.evaluate(node.Val, context))
+            delimiter = self.evaluate(node.Delimiter, context)
+            
+            if not isinstance(text, str):
+                raise TypeError("Split requires a string to split")
+            if not isinstance(delimiter, str):
+                raise TypeError("Split delimiter must be a string")
+            
+            return text.split(delimiter)
+        elif isinstance(node, AugAssignment):
+            name = node.Name
+            val = self.evaluate(node.Value, context)
+            operation = node.Operator
+            if operation in ['+', '-', '*', '/', '//']:
+                evaluated_value = self.evaluate(Operation(Variable(name), operation, val), context)
+            else:
+                raise ValueError("AugAssignment requires a valid mathematical operator")
+            context[name] = evaluated_value
+            return None
+        elif isinstance(node, ForceStop):
+            print('An unexpected stop code was detected and is unavoidable unless caught.')
+            print('Code cannot return to proper use without loss of session.')
+            print('\nThis error is usually used as a fallback. If you see this, it means a developer specifically triggered this stop for the reason below:')
+            print('Reason: ', self.evaluate(node.Reason, context))
+            raise StopIteration('An unavoidable system class error has occured.')
+        elif isinstance(node, LoadHTTPDriver):
+            try:
+                global requests
+                import requests
+                return self.evaluate(node.ReturnCode, context)
+            except ModuleNotFoundError as e:
+                raise ModuleNotFoundError(f"UNEXPECTED_COMPILER_EXIT: UNEXPECTED_HTTP_DRIVER_REQUEST_CALL: BAD_MODULE_REQUEST: MISSING_DEPENDENCY: Could not obtain necessary dependency 'requests' EXIT: {hex(id(e))}")
+        elif isinstance(node, SendHTTPRequest):
+            try:   
+                method = str(self.evaluate(node.Method, context))
+                url = self.evaluate(node.URL, context)
+                headers = self.evaluate(node.Headers, context)
+                data = self.evaluate(node.Data, context)
+
+                if method.upper() in ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']:
+                    response = requests.request(method.upper(), url=url, headers=headers, data=data)
+                else:
+                    raise ValueError("SendHTTPRequest: Unsupported HTTP method")
+                return response.text
+            except ModuleNotFoundError:
+                raise ModuleNotFoundError('No HTTP Driver found')
+        elif isinstance(node, HTTPQueryParameters):
+            print('This function has not yet been developed. Please wait in future updates for this function.')
+        elif isinstance(node, RetrieveFromMemory):
+            key = self.evaluate(node.Key, context)
+            if not context.get(key, None):
+                raise KeyError(f"Key '{key}' not found in memory")
+                return 0
+            else:
+                print(f"{key} has \"{context[key]}\" at location {hex(list(context.keys()).index(str(key)))}h in memory")
+            return 1
+        else:
+            if node is None:
+                print("[WARNING]: Cannot evaluate NoneType")
+                return None
+            elif isinstance(node, (str, int, float, bool, list, dict, tuple)):
+                return node
+            else:
+                global runnable
+                runnable = False
+                raise TypeError(f"UNEXPECTED_TOKEN: UNEXPECTED_VARIABLE_TYPE_USAGE: MISSING_{type(node)}")
 E = Evaluate()
-def show_result(output, qw):
+def show_result(output_queue=None, qw=100):
+    global entry
     root2 = tk.Tk()
     root2.title('ASTLANG OUTPUT')
+    root2.geometry('1000x600')
 
     output_label = tk.Label(root2, text='OUTPUT:', font=('Consolas', 12,'italic bold'), width=20, justify='left')
     output_label.pack()
 
-    entry = tk.Text(root2, font=('Consolas',12,'bold'), width=qw)
-    entry.pack(padx=10, pady=15)
+    main_frame = tk.Frame(root2)
+    main_frame.pack(expand=True, fill='both', padx=10, pady=15)
 
-    entry.insert("1.0", output)
-    entry.config(state='disabled') 
+    entry = tk.Text(main_frame, font=('Consolas',12,'bold'), width=qw, height=30,
+                   background="#1E1E1E", foreground="#D4D4D4", insertbackground="white", state='disabled')
+    entry.pack(expand=True, fill='both')
+    
+    entry.tag_configure("error", foreground="#FF0000", font=('Consolas', 12, 'bold'))
+    entry.tag_configure("success", foreground="#00FF00", font=('Consolas', 12, 'bold'))
+    entry.tag_configure("normal", foreground="#FFFFFF", font=('Consolas', 12, 'bold'))
+    entry.tag_configure("warning", foreground="#FFA500", font=('Consolas', 12, 'bold'))
 
+    button_frame = tk.Frame(root2)
+    button_frame.pack(side='bottom', fill='x', padx=5, pady=5)
+    
+    execution_running = {'value': True}
+
+    def insert_colored_text(text, tag="normal"):
+        entry.config(state='normal')
+        entry.insert(tk.END, text, tag)
+        entry.config(state='disabled')
+        entry.see(tk.END)
+
+    if output_queue is None:
+        entry.insert("1.0", "")
+        entry.config(state='disabled')
+        root2.mainloop()
+        return
+    
+    def update_output():
+        try:
+            while not output_queue.empty():
+                message = output_queue.get_nowait()
+                
+                if isinstance(message, dict):
+                    text = message.get('text', '')
+                    color = message.get('color', 'normal')
+                    insert_colored_text(text, color)
+                elif message == "__EXECUTION_COMPLETE__":
+                    insert_colored_text("\n[EXECUTION COMPLETED]\n", "success")
+                    execution_running['value'] = False
+                elif message == "__EXECUTION_ERROR__":
+                    insert_colored_text("\n[EXECUTION ERROR]\n", "error")
+                    execution_running['value'] = False
+                else:
+                    if any(error_keyword in str(message) for error_keyword in 
+                           ["[ERROR]"]):
+                        insert_colored_text(str(message), "error")
+                    elif any(info_keyword in str(message) for info_keyword in 
+                            ["DEBUG MODE", "Starting execution"]):
+                        insert_colored_text(str(message), "normal")
+                    else:
+                        insert_colored_text(str(message), "normal")
+                
+                root2.update_idletasks()
+        except queue.Empty:
+            pass
+
+        if execution_running['value']:
+            root2.after(50, update_output)
+
+    update_output()
+
+    def on_closing():
+        execution_running['value'] = False
+        root2.destroy()
+    
+    root2.protocol("WM_DELETE_WINDOW", on_closing)
     root2.mainloop()
-def show_evaluate_output():
-    buffer = io.StringIO()
-    old_stdout = sys.stdout
-    sys.stdout = buffer
-    try:
-        E.evaluate(content, context)
-    finally:
-        sys.stdout = old_stdout
-    output = buffer.getvalue()
-    show_result(output, 100)
-    output = ''
-ran = False
+def show_evaluate_output(code_content):
+    if not code_content:
+        print("No code content received!")
+        return
+    output_queue = queue.Queue()
+    class RealTimeStdout:
+        def __init__(self, queue):
+            self.queue = queue
+            
+        def write(self, text):
+            if text:
+                if any(error_keyword in str(text) for error_keyword in 
+                       ["FATAL ERROR AT", "[ERROR]", "Traceback (most recent call last):"]):
+                    self.queue.put({'text': text, 'color': 'error'})
+                elif any(warning_keyword in str(text) for warning_keyword in 
+                        ["WARNING", "Warning:", "[WARNING]"]):
+                    self.queue.put({'text': text, 'color': 'warning'})
+                else:
+                    self.queue.put({'text': text, 'color': 'normal'})
+        
+        def flush(self):
+            pass
+    
+    gui_thread = threading.Thread(target=lambda: show_result(output_queue), daemon=True)
+    gui_thread.start()
+    time.sleep(0.2)
+    
+    def execute_code():
+        global erroroccured
+        erroroccured = False
+        real_time_stdout = RealTimeStdout(output_queue)
+        original_stdout = sys.stdout
+        sys.stdout = real_time_stdout
+        
+        try:
+            print("Starting execution...\n\n")
+            
+            class RealTimeEvaluate(Evaluate):
+                def evaluate(self, node, context):
+                    if isinstance(node, (Loop, IfCondition)):
+                        time.sleep(0.001) 
+                    return super().evaluate(node, context)
+            
+            rt_evaluator = RealTimeEvaluate()
+            rt_evaluator.evaluate(code_content, context)
+            
+            output_queue.put("__EXECUTION_COMPLETE__")
+        except ArithmeticError as e:
+            text = f'\n[ERROR]: BAD_ARITHMETIC_PROMPT, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except LookupError as e:
+            text = f'\n[ERROR]: NO_LOOKUP_KEY, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except AssertionError as e:
+            text = f'\n[ERROR]: ASSERTION_FAILED, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except AttributeError as e:
+            text = f'\n[ERROR]: UNKNOWN_METHOD_CALL, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except EOFError as e:
+            text = f'\n[ERROR]: UNEXPECTED_END_OF_FILE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except GeneratorExit as e:
+            text = f'\n[ERROR]: RECEIVED_GENERATOR_EXIT_PROMPT, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except ImportError as e:
+            text = f'\n[ERROR]: BAD_MODULE_REFERENCE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except ModuleNotFoundError as e:
+            text = f'\n[ERROR]: BAD_MODULE_REQUEST, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except IndexError as e:
+            text = f'\n[ERROR]: UNEXPECTED_INDEX_RANGE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except KeyError as e:
+            text = f'\n[ERROR]: BAD_DICTIONARY_KEY_REFERENCE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except KeyboardInterrupt as e:
+            text = f'\n[ERROR]: PROCESS_INTERRUPTED, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except MemoryError as e:
+            text = f'\n[ERROR]: MEMORY_EXCEEDED, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except NameError as e:
+            text = f'\n[ERROR]: UNKNOWN_GLOBAL_VARIABLE_REFERENCE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except OverflowError as e:
+            text = f'\n[ERROR]: ARITHMETIC_OVERFLOW, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except RecursionError as e:
+            text = f'\n[ERROR]: MAX_EXECUTION_RECURSION_DEPTH_EXCEEDED, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except RuntimeError as e:
+            text = f'\n[ERROR]: UNEXPECTED_RUNTIME_PROMPT, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except SyntaxError as e:
+            text = f'\n[ERROR]: BAD_SYNTAX_USAGE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except TypeError as e:
+            text = f'\n[ERROR]: UNEXPECTED_VARIABLE_TYPE_USAGE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except UnboundLocalError as e:
+            text = f'\n[ERROR]: HIDDEN_LOCAL_VARIABLE_REFERENCE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except ValueError as e:
+            text = f'\n[ERROR]: BAD_FUNCTION_ARGUMENT, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except ZeroDivisionError as e:
+            text = f'\n[ERROR]: UNSUPPORTED_DIVISION_BY_ZERO, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        finally:
+            if erroroccured:    
+                output_queue.put({'text': f"\n[ERROR]: {text}", 'color': 'error'})
+                messagebox.showerror('COMPILER STOP CODE', text)
+                output_queue.put("__EXECUTION_ERROR__")
+                sys.stdout = original_stdout
+
+    execution_thread = threading.Thread(target=execute_code, daemon=False)
+    execution_thread.start()
+    execution_thread.join()
+    gui_thread.join()
 def MAIN():
     if main:
         try:
-            while True:
-                txteditor_ui()
-                if runnable:
-                    show_evaluate_output()
-                else:
-                    return
+            code_content = txteditor_ui() 
+            if runnable and code_content:
+                show_evaluate_output(code_content)
+            else:
+                return 1
+        except tk.Tcl_AsyncDeleteError:
+            pass
         except NameError:
             messagebox.showerror('ERROR', 'DID NOT RECIEVE ANY CODE FOR IDE')
-            traceback.print_exc()
-            MAIN()
-        except tk.TclError:
-            messagebox.showerror('ERROR', 'NO CODE OUTPUT, CANNOT DISPLAY')
             traceback.print_exc()
             MAIN()
         except SystemExit:
@@ -2087,8 +4055,6 @@ def MAIN():
         except KeyboardInterrupt:
             pass
         except:
-            traceback.print_exc()
-            MAIN()
-if not ran:
-    MAIN()
-    ran = True
+                traceback.print_exc()
+                MAIN()
+MAIN()
