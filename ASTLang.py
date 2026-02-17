@@ -1311,17 +1311,10 @@ class WarningRaise(NodeParent):
     def __init__(self, Message, Category=String('UserWarning')):
         self.Message = Message
         self.Category = Category
-class ErrorContext(NodeParent):
-    def __init__(self, Body, ErrorHandlers=ListAssignment()):
-        self.Body = Body
-        self.ErrorHandlers = ErrorHandlers
 class CustomError(NodeParent):
     def __init__(self, Name, BaseError=String('Exception')):
         self.Name = Name
         self.BaseError = BaseError
-class GetErrorInfo(NodeParent):
-    def __init__(self, Error):
-        self.Error = Error
 
 class Statistics(NodeParent):
     def __init__(self, Data, Operation):
@@ -1419,6 +1412,9 @@ class RangeCheck(NodeParent):
 class ForceStop(IntepreterParent):
     def __init__(self, Reason=String('')):
         self.Reason = Reason
+class RetrieveFromMemory(IntepreterParent):
+    def __init__(self, Key):
+        self.Key = Key
 
 class LoadHTTPDriver(IntepreterParent):
     def __init__(self, ReturnCode=Boolean('True')):
@@ -3761,7 +3757,7 @@ class Evaluate(Stack):
             name = node.Name
             val = self.evaluate(node.Value, context)
             operation = node.Operator
-            if operation in ['+', '-', '*', '/']:
+            if operation in ['+', '-', '*', '/', '//']:
                 evaluated_value = self.evaluate(Operation(Variable(name), operation, val), context)
             else:
                 raise ValueError("AugAssignment requires a valid mathematical operator")
@@ -3796,9 +3792,17 @@ class Evaluate(Stack):
                 raise ModuleNotFoundError('No HTTP Driver found')
         elif isinstance(node, HTTPQueryParameters):
             print('This function has not yet been developed. Please wait in future updates for this function.')
+        elif isinstance(node, RetrieveFromMemory):
+            key = self.evaluate(node.Key, context)
+            if not context.get(key, None):
+                raise KeyError(f"Key '{key}' not found in memory")
+                return 0
+            else:
+                print(f"{key} has \"{context[key]}\" at location {hex(list(context.keys()).index(str(key)))}h in memory")
+            return 1
         else:
             if node is None:
-                print("[WARNING]: Evaluated node is NoneType")
+                print("[WARNING]: Cannot evaluate NoneType")
                 return None
             elif isinstance(node, (str, int, float, bool, list, dict, tuple)):
                 return node
@@ -3937,9 +3941,9 @@ def show_evaluate_output(code_content):
             output_queue.put("__EXECUTION_COMPLETE__")
             
         except Exception as e:
-            output_queue.put({'text': f"\n[FATAL ERROR AT {Evaluate.__name__}]: {str(e)}\n", 'color': 'error'})
+            output_queue.put({'text': f"\n[ERROR]: {str(e)}\n", 'color': 'error'})
             import traceback
-            output_queue.put({'text': traceback.format_exc(), 'color': 'error'})
+            output_queue.put({'text': traceback.format_exception_only(), 'color': 'error'})
             output_queue.put("__EXECUTION_ERROR__")
         finally:
             sys.stdout = original_stdout
