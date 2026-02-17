@@ -1,6 +1,6 @@
 module_return_code = 0
 try:
-    import io, sys, time, traceback, inspect, math, threading, queue
+    import io, sys, time, inspect, math, threading, queue
     from tkinter import messagebox
     import tkinter as tk
     from random import randint
@@ -9,12 +9,17 @@ except ModuleNotFoundError:
     print('System exception ; ModuleNotFoundError ; Do you have Python installed correctly?')
     print("Module Error Return Code: [{}] - INTERRUPTED".format(module_return_code))
     exit()
-verno = 'ASTLang 39, Release 2 [PRE-RELEASE]'
-pcks = 'traceback, random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue, requests (pip)'
-defname = '__main__'
+verno = 'ASTLang 40, Release 1 [FINAL]'
+pcks = 'traceback (deprecated), random, ast, re, pickle, tkinter, sys, io, time, builtins, inspect, math, threading, queue, requests (pip)'
 class Stack(Exception):
-    def IsStack(self):
+    def IsSelf(self):
         return __name__ == '__main__'
+    def __str__(self):
+        return f'UNEXPECTED_COMPILER_EXIT: {hex(id(Exception))}\nNote: Unintended for external use'
+Compiler = Stack()
+if not Compiler.IsSelf():
+    messagebox.showerror('ASTLANG','UNRESOLVED_COMPILER_IMPORT_REFERENCE_CALL (EXTERNAL): This package does not support external use.')
+    raise Stack()
 context: dict[str, object] = dict() # Initialize main register
 info = f"""
 DEFAULT MESSAGE FROM IDE:
@@ -24,7 +29,7 @@ Note from NTMDev: ASTLang 37 is now unsupported
 ASTLang for PC, Local based (IDE)
 Supports IDE usuage and file saving with .astlang
 
-Python 3.12 Build 2025, Version 3.12.0 "NEWEST", {defname}
+Python 3.12 Build 2025, Version 3.14.0 "NEWEST"
 
 Designed with GitHub Copilot
 Created by NTMDev (2025)
@@ -41,8 +46,8 @@ Currently Known Bugs:
 
 COMING SOON: More HTTP requests and potentially web sockets
 
-Added: LoadHTTPDriver, SendHTTPRequest, HTTPQueryParameters (unfinished)
-Updated: NewInstance parameter constructor evaluator: fixed "self" evaluation
+Added: Descriptive error messages, in a windows BSOD format
+Updated: Removed redundant functions taking up compiler space. Also, revised Stack class to protect against external use with IsSelf()
 ----------------------------------------------------------------------------------------------------------------
 """
 
@@ -1137,11 +1142,11 @@ class IsType(NodeParent):
         self.Value = Value
         self.Type = Type
 class ErrorCatch(IntepreterParent):
-    def __init__(self, CatchedException, TryBody, ExceptBody, FinallyBody=ObjNONE()):
+    def __init__(self, CatchedException, TryBody, ExceptBody, DefaultBody=ObjNONE()):
         self.CatchedException = CatchedException
         self.TryBody = TryBody
         self.ExceptBody = ExceptBody
-        self.FinallyBody = FinallyBody
+        self.DefaultBody = DefaultBody
 class Raise(NodeParent):
     def __init__(self, ErrorName, ErrorText=String('')):
         self.ErrorName = ErrorName
@@ -2118,8 +2123,8 @@ class Evaluate(Stack):
                 for stmt in node.ExceptBody:
                     result = self.evaluate(stmt, context)
             finally:
-                if not isinstance(node.FinallyBody, ObjNONE):
-                    for stmt in node.FinallyBody:
+                if not isinstance(node.DefaultBody, ObjNONE):
+                    for stmt in node.DefaultBody:
                         self.evaluate(stmt, context)
             return result
         elif isinstance(node, Sum):
@@ -3896,9 +3901,7 @@ def show_evaluate_output(code_content):
     if not code_content:
         print("No code content received!")
         return
-    
     output_queue = queue.Queue()
-    
     class RealTimeStdout:
         def __init__(self, queue):
             self.queue = queue
@@ -3922,6 +3925,8 @@ def show_evaluate_output(code_content):
     time.sleep(0.2)
     
     def execute_code():
+        global erroroccured
+        erroroccured = False
         real_time_stdout = RealTimeStdout(output_queue)
         original_stdout = sys.stdout
         sys.stdout = real_time_stdout
@@ -3939,14 +3944,96 @@ def show_evaluate_output(code_content):
             rt_evaluator.evaluate(code_content, context)
             
             output_queue.put("__EXECUTION_COMPLETE__")
-            
-        except Exception as e:
-            output_queue.put({'text': f"\n[ERROR]: {str(e)}\n", 'color': 'error'})
-            import traceback
-            output_queue.put({'text': traceback.format_exception_only(), 'color': 'error'})
-            output_queue.put("__EXECUTION_ERROR__")
+        except ArithmeticError as e:
+            text = f'\n[ERROR]: BAD_ARITHMETIC_PROMPT, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except LookupError as e:
+            text = f'\n[ERROR]: NO_LOOKUP_KEY, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except AssertionError as e:
+            text = f'\n[ERROR]: ASSERTION_FAILED, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except AttributeError as e:
+            text = f'\n[ERROR]: UNKNOWN_METHOD_CALL, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except EOFError as e:
+            text = f'\n[ERROR]: UNEXPECTED_END_OF_FILE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except GeneratorExit as e:
+            text = f'\n[ERROR]: RECEIVED_GENERATOR_EXIT_PROMPT, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except ImportError as e:
+            text = f'\n[ERROR]: BAD_MODULE_REFERENCE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except ModuleNotFoundError as e:
+            text = f'\n[ERROR]: BAD_MODULE_REQUEST, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except IndexError as e:
+            text = f'\n[ERROR]: UNEXPECTED_INDEX_RANGE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except KeyError as e:
+            text = f'\n[ERROR]: BAD_DICTIONARY_KEY_REFERENCE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except KeyboardInterrupt as e:
+            text = f'\n[ERROR]: PROCESS_INTERRUPTED, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except MemoryError as e:
+            text = f'\n[ERROR]: MEMORY_EXCEEDED, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except NameError as e:
+            text = f'\n[ERROR]: UNKNOWN_GLOBAL_VARIABLE_REFERENCE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except OverflowError as e:
+            text = f'\n[ERROR]: ARITHMETIC_OVERFLOW, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except RecursionError as e:
+            text = f'\n[ERROR]: MAX_EXECUTION_RECURSION_DEPTH_EXCEEDED, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except RuntimeError as e:
+            text = f'\n[ERROR]: UNEXPECTED_RUNTIME_PROMPT, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except SyntaxError as e:
+            text = f'\n[ERROR]: BAD_SYNTAX_USAGE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except TypeError as e:
+            text = f'\n[ERROR]: UNEXPECTED_VARIABLE_TYPE_USAGE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except UnboundLocalError as e:
+            text = f'\n[ERROR]: HIDDEN_LOCAL_VARIABLE_REFERENCE, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except ValueError as e:
+            text = f'\n[ERROR]: BAD_FUNCTION_ARGUMENT, {hex(id(e))}'
+            erroroccured = True
+            error = e
+        except ZeroDivisionError as e:
+            text = f'\n[ERROR]: UNSUPPORTED_DIVISION_BY_ZERO, {hex(id(e))}'
+            erroroccured = True
+            error = e
         finally:
-            sys.stdout = original_stdout
+            if erroroccured:    
+                output_queue.put({'text': f"\n[ERROR]: {text}", 'color': 'error'})
+                messagebox.showerror('COMPILER STOP CODE', text)
+                output_queue.put("__EXECUTION_ERROR__")
+                sys.stdout = original_stdout
 
     execution_thread = threading.Thread(target=execute_code, daemon=False)
     execution_thread.start()
